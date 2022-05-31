@@ -2,8 +2,10 @@
 
 int main()
 {
-    int test;
-    std::cin >> test;
-    std::cout << test;
+    Simulator *simulator = new Simulator();
+
+    simulator->run();
+    
+    delete simulator;
 }
 
