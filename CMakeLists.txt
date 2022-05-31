@@ -9,4 +9,7 @@ set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
-target_link_libraries(MatrixLED-Simulator ${OpenCV_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
+
+find_package(cppzmq)
+target_link_libraries(${PROJECT_NAME} cppzmq)
