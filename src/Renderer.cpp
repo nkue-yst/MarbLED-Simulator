@@ -37,11 +37,13 @@ void Renderer::update()
     );
 
     // Draw chips
+    std::vector<std::vector<Color>> color_mat = this->getParent()->getColors();
+
     for (uint32_t y = 0; y < this->getParent()->getLedHeight(); y++)
     {
         for (uint32_t x = 0; x < this->getParent()->getLedWidth(); x++)
         {
-            Color p_color = this->getParent()->getColor(x, y);
+            Color p_color = color_mat[y][x];
 
             if (!(p_color.r == 0 && p_color.g == 0 && p_color.b == 0))
             {
