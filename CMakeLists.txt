@@ -12,4 +12,5 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
 
 find_package(cppzmq)
+include_directories(${cppzmq_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} cppzmq)
