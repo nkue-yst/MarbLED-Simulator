@@ -51,7 +51,7 @@ void Simulator::run()
         std::cout << frame_num << std::endl;  // Debug print for frame count
 
         // Test for quit by time
-        if (frame_num >= 10)
+        if (frame_num >= 100)
             this->quit_flag_ = true;
 
         frame_num++;
