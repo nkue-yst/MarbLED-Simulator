@@ -37,13 +37,15 @@ void Renderer::update()
     );
 
     // Draw chips
-    std::vector<std::vector<Color>> color_mat = this->getParent()->getColors();
+    std::vector<Color> color_mat = this->getParent()->getColors();
+
+    this->getParent()->mutex_color_mat_.lock();
 
     for (uint32_t y = 0; y < this->getParent()->getLedHeight(); y++)
     {
         for (uint32_t x = 0; x < this->getParent()->getLedWidth(); x++)
         {
-            Color p_color = color_mat[y][x];
+            Color p_color = color_mat[x + this->getParent()->getLedWidth() * y];
 
             if (!(p_color.r == 0 && p_color.g == 0 && p_color.b == 0))
             {
@@ -53,7 +55,7 @@ void Renderer::update()
                         this->pixel_size_ * x + this->pixel_size_ / 2,
                         this->pixel_size_ * y + this->pixel_size_ / 2
                     ),
-                    static_cast<int32_t>(this->pixel_size_ / 2 + this->pixel_size_ * 0.2f),
+                    static_cast<int32_t>(this->pixel_size_ / 2),
                     cv::Scalar(
                         p_color.b,
                         p_color.g,
@@ -64,6 +66,8 @@ void Renderer::update()
             }
         }
     }
+
+    this->getParent()->mutex_color_mat_.unlock();
 
     // Create marble sim
     cv::GaussianBlur(
@@ -76,5 +80,5 @@ void Renderer::update()
     // Show windows
     cv::imshow(this->sim_chip_window_, this->sim_chip_img_);
     cv::imshow(this->sim_marble_window_, this->sim_marble_img_);
-    cv::waitKey(16);
+    cv::waitKey(33);
 }

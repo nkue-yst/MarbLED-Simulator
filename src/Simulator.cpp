@@ -12,15 +12,10 @@ Simulator::Simulator()
     this->setLedWidth(64);
     this->setLedHeight(32);
 
-    this->color_mat_.resize(this->getLedHeight());
-    for (auto& color_vec : this->color_mat_)
-        color_vec.resize(this->getLedWidth());
+    this->color_mat_.resize(this->getLedWidth() * this->getLedHeight());
 
-    for (uint32_t y = 0; y < this->getLedHeight(); y++)
-        for (uint32_t x = 0; x < this->getLedWidth(); x++)
-            this->color_mat_[y][x] = Color(0, 0, 0);
-
-    //this->color_mat[5][2] = Color(255, 255, 255);  // Draw point for debug
+    for (uint32_t i = 0; i < this->getLedWidth() * this->getLedHeight(); i++)
+            this->color_mat_[i] = Color(0, 0, 0);
 
     // Initialize components
     this->renderer_ = new Renderer(this);
@@ -48,6 +43,7 @@ void Simulator::run()
 
     while (!this->update())
     {
+        /*
         std::cout << frame_num << std::endl;  // Debug print for frame count
 
         // Test for quit by time
@@ -55,6 +51,7 @@ void Simulator::run()
             this->quit_flag_ = true;
 
         frame_num++;
+        */
     }
 }
 
