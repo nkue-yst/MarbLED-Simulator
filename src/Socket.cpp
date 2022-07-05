@@ -32,13 +32,6 @@ void Socket::run()
         auto res = sock.recv(buf, zmq::recv_flags::none);
         std::vector rgb_value(buf.data<uint16_t>(), buf.data<uint16_t>() + buf.size() / sizeof(uint16_t));  // ピクセル毎のRGB値を動的配列に格納する
 
-        // 受信したRGB値をそれぞれ出力する
-        std::cout <<
-            "Index: " << rgb_value.at(0) << ", " <<
-            "Red: "   << rgb_value.at(1) << ", " <<
-            "Green: " << rgb_value.at(2) << ", " <<
-            "Blue: "  << rgb_value.at(3) << std::endl;
-
         Color color(rgb_value.at(1), rgb_value.at(2), rgb_value.at(3));
         this->getParent()->color_mat_.at(rgb_value.at(0)) = color;
 

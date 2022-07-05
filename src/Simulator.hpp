@@ -28,6 +28,7 @@ public:
     uint32_t getLedHeight() const { return this->led_height_; }
     std::vector<Color> getColors() const { return this->color_mat_; }
 
+    void setQuitFlag(const bool flag) { this->quit_flag_ = flag; }
     void setLedWidth(const uint32_t width) { this->led_width_ = width; }
     void setLedHeight(const uint32_t height) { this->led_height_ = height; }
 

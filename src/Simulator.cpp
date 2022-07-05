@@ -43,15 +43,11 @@ void Simulator::run()
 
     while (!this->update())
     {
-        /*
-        std::cout << frame_num << std::endl;  // Debug print for frame count
+        auto quitFunc = [this]() {
+            this->setQuitFlag(true);
+        };
 
-        // Test for quit by time
-        if (frame_num >= 100)
-            this->quit_flag_ = true;
-
-        frame_num++;
-        */
+        sigaction(SIGINT, &quitFunc, NULL);
     }
 }
 
