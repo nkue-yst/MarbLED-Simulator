@@ -1,5 +1,9 @@
 #include <algorithm>
 
+#include "osc/OscOutboundPacketStream.h"
+#include "ip/IpEndpointName.h"
+#include "ip/UdpSocket.h"
+
 #include "Renderer.hpp"
 #include "Color.hpp"
 #include "Common.hpp"
@@ -24,6 +28,36 @@ Renderer::Renderer(Simulator* simulator)
 Renderer::~Renderer()
 {
     printLog("Destroy Renderer", true);
+}
+
+void mouseCallback(int event, int x, int y, int flags, void* userdata)
+{
+    UdpTransmitSocket sock(IpEndpointName("127.0.0.1", 9000));
+
+    char buff[1024];
+    osc::OutboundPacketStream p(buff, 1024);
+
+    switch (event)
+    {
+    case cv::EVENT_LBUTTONDOWN:
+        p << osc::BeginBundleImmediate << osc::BeginMessage("/touch/0/point") << x / 64 << y / 32 << osc::EndMessage << osc::EndBundle;
+        sock.Send(p.Data(), p.Size());
+        break;
+    case cv::EVENT_RBUTTONDOWN:
+        p << osc::BeginBundleImmediate << osc::BeginMessage("/touch/1/point") << x / 64 << y / 32 << osc::EndMessage << osc::EndBundle;
+        sock.Send(p.Data(), p.Size());
+        break;
+    case cv::EVENT_LBUTTONUP:
+        p << osc::BeginBundleImmediate << osc::BeginMessage("/touch/0/delete") << osc::EndMessage << osc::EndBundle;
+        sock.Send(p.Data(), p.Size());
+        break;
+    case cv::EVENT_RBUTTONUP:
+        p << osc::BeginBundleImmediate << osc::BeginMessage("/touch/1/delete") << osc::EndMessage << osc::EndBundle;
+        sock.Send(p.Data(), p.Size());
+        break;
+    default:
+        break;
+    }
 }
 
 void Renderer::update()
@@ -80,5 +114,9 @@ void Renderer::update()
     // Show windows
     cv::imshow(this->sim_chip_window_, this->sim_chip_img_);
     cv::imshow(this->sim_marble_window_, this->sim_marble_img_);
+
+    cv::setMouseCallback(this->sim_chip_window_, mouseCallback);
+    cv::setMouseCallback(this->sim_marble_window_, mouseCallback);
+
     cv::waitKey(33);
 }

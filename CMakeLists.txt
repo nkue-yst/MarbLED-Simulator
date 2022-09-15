@@ -26,3 +26,35 @@ add_subdirectory(thirdparty/libzmq)
 add_subdirectory(thirdparty/cppzmq)
 include_directories(thirdparty/libzmq/include)
 include_directories(thirdparty/cppzmq)
+
+### Setup oscpack ###
+set(OSCPACK_DIR ${CMAKE_SOURCE_DIR}/thirdparty/oscpack)
+include_directories(${OSCPACK_DIR})
+if(WIN32)
+    set(IpSystemTypePath ip/win32)
+else(WIN32)
+    set(IpSystemTypePath ip/posix)
+endif(WIN32)
+add_library(oscpack
+    ${OSCPACK_DIR}/ip/IpEndpointName.h
+    ${OSCPACK_DIR}/ip/IpEndpointName.cpp
+    ${OSCPACK_DIR}/ip/NetworkingUtils.h
+    ${OSCPACK_DIR}/${IpSystemTypePath}/NetworkingUtils.cpp
+    ${OSCPACK_DIR}/ip/UdpSocket.h
+    ${OSCPACK_DIR}/${IpSystemTypePath}/UdpSocket.cpp
+    ${OSCPACK_DIR}/ip/PacketListener.h
+    ${OSCPACK_DIR}/ip/TimerListener.h
+    ${OSCPACK_DIR}/osc/OscTypes.h
+    ${OSCPACK_DIR}/osc/OscTypes.cpp 
+    ${OSCPACK_DIR}/osc/OscHostEndianness.h
+    ${OSCPACK_DIR}/osc/OscException.h
+    ${OSCPACK_DIR}/osc/OscPacketListener.h
+    ${OSCPACK_DIR}/osc/MessageMappingOscPacketListener.h
+    ${OSCPACK_DIR}/osc/OscReceivedElements.h
+    ${OSCPACK_DIR}/osc/OscReceivedElements.cpp
+    ${OSCPACK_DIR}/osc/OscPrintReceivedElements.h
+    ${OSCPACK_DIR}/osc/OscPrintReceivedElements.cpp
+    ${OSCPACK_DIR}/osc/OscOutboundPacketStream.h
+    ${OSCPACK_DIR}/osc/OscOutboundPacketStream.cpp
+)
+target_link_libraries(${PROJECT_NAME} oscpack)

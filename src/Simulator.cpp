@@ -46,8 +46,6 @@ void Simulator::run()
         auto quitFunc = [this]() {
             this->setQuitFlag(true);
         };
-
-        sigaction(SIGINT, &quitFunc, NULL);
     }
 }
 
