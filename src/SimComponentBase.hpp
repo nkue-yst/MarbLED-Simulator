@@ -8,7 +8,7 @@ public:
         this->simulator_ = simulator;
     }
 
-protected:
+public:
     /**
      * @brief  Get parent simulator class reference
      */

@@ -18,7 +18,6 @@ Renderer::Renderer(Simulator* simulator)
 
     // Pixel size settings
     this->pixel_size_ = std::min(display_width / this->getParent()->getLedWidth(), display_height / this->getParent()->getLedHeight()) / 2;
-    this->blank_size_ = this->pixel_size_ / 3;
 
     this->update();
 
@@ -37,27 +36,45 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata)
     char buff[1024];
     osc::OutboundPacketStream p(buff, 1024);
 
+    Renderer* renderer = static_cast<Renderer*>(userdata);
+
+    // マウス座標をパネル上での座標に変換する
+    int32_t pos_x = x / renderer->pixel_size_;
+    int32_t pos_y = y / renderer->pixel_size_;
+
+    static bool l_down = false;
+
     switch (event)
     {
     case cv::EVENT_LBUTTONDOWN:
-        p << osc::BeginBundleImmediate << osc::BeginMessage("/touch/0/point") << x / 64 << y / 32 << osc::EndMessage << osc::EndBundle;
-        sock.Send(p.Data(), p.Size());
+        l_down = true;
+    case cv::EVENT_MOUSEMOVE:
+        if (l_down)
+        {
+            p << osc::BeginBundleImmediate
+                << osc::BeginMessage("/touch/0/point")
+                    << pos_x
+                    << pos_y
+                << osc::EndMessage
+            << osc::EndBundle;
+            sock.Send(p.Data(), p.Size());
+        }
         break;
-    case cv::EVENT_RBUTTONDOWN:
-        p << osc::BeginBundleImmediate << osc::BeginMessage("/touch/1/point") << x / 64 << y / 32 << osc::EndMessage << osc::EndBundle;
-        sock.Send(p.Data(), p.Size());
-        break;
+
     case cv::EVENT_LBUTTONUP:
-        p << osc::BeginBundleImmediate << osc::BeginMessage("/touch/0/delete") << osc::EndMessage << osc::EndBundle;
+        l_down = false;
+        p << osc::BeginBundleImmediate
+            << osc::BeginMessage("/touch/0/delete")
+            << osc::EndMessage
+        << osc::EndBundle;
         sock.Send(p.Data(), p.Size());
         break;
-    case cv::EVENT_RBUTTONUP:
-        p << osc::BeginBundleImmediate << osc::BeginMessage("/touch/1/delete") << osc::EndMessage << osc::EndBundle;
-        sock.Send(p.Data(), p.Size());
-        break;
+
     default:
         break;
     }
+
+    //std::cout << "x: " << pos_x << "\n" << "y: " << pos_y << std::endl;
 }
 
 void Renderer::update()
@@ -115,8 +132,8 @@ void Renderer::update()
     cv::imshow(this->sim_chip_window_, this->sim_chip_img_);
     cv::imshow(this->sim_marble_window_, this->sim_marble_img_);
 
-    cv::setMouseCallback(this->sim_chip_window_, mouseCallback);
-    cv::setMouseCallback(this->sim_marble_window_, mouseCallback);
+    cv::setMouseCallback(this->sim_chip_window_, mouseCallback, this);
+    cv::setMouseCallback(this->sim_marble_window_, mouseCallback, this);
 
-    cv::waitKey(33);
+    cv::waitKey(66);
 }

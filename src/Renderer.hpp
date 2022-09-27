@@ -27,9 +27,7 @@ private:
     /// Marble simulator texture
     cv::Mat sim_marble_img_;
 
+public:
     /// Pixel size in simulator
     uint32_t pixel_size_;
-
-    /// Blank size per pixel
-    uint32_t blank_size_;
 };
