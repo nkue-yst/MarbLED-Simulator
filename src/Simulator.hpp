@@ -32,9 +32,6 @@ public:
     void setLedWidth(const uint32_t width) { this->led_width_ = width; }
     void setLedHeight(const uint32_t height) { this->led_height_ = height; }
 
-    /// Mutex for color data
-    std::mutex mutex_color_mat_;
-
 private:
     /// Quit flag
     bool quit_flag_;

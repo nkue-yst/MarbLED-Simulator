@@ -75,12 +75,12 @@ void Socket::run()
     {
         /* ピクセルIDの受信 */
         int8_t index_str[32] = {0};
-        recv(dest_sock, index_str, sizeof(index_str), MSG_DONTWAIT);
+        recv(dest_sock, index_str, sizeof(index_str), 0);
         uint16_t index = std::atoi((const char*)index_str);
 
         /* 色情報の受信 */
         uint8_t color[3] = {0};
-        recv(dest_sock, color, sizeof(color), MSG_DONTWAIT);
+        recv(dest_sock, color, sizeof(color), 0);
 
         this->getParent()->color_mat_.at(index) = Color(color[0], color[1], color[2]);
     }
