@@ -13,6 +13,7 @@ file(GLOB TARGET_SRC src/*.hpp src/*.cpp)
 add_executable(${PROJECT_NAME} ${TARGET_SRC})
 target_link_libraries(${PROJECT_NAME})
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 ### Setup OpenCV ###
 find_package(OpenCV REQUIRED)
