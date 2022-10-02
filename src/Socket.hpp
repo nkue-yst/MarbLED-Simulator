@@ -1,6 +1,5 @@
 #pragma once
 
-#include <zmq.hpp>
 #include "SimComponentBase.hpp"
 
 class Socket : public SimComponentBase

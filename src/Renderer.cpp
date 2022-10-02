@@ -90,7 +90,7 @@ void Renderer::update()
     // Draw chips
     std::vector<Color> color_mat = this->getParent()->getColors();
 
-    this->getParent()->mutex_color_mat_.lock();
+    //this->getParent()->mutex_color_mat_.lock();
 
     for (uint32_t y = 0; y < this->getParent()->getLedHeight(); y++)
     {
@@ -118,7 +118,7 @@ void Renderer::update()
         }
     }
 
-    this->getParent()->mutex_color_mat_.unlock();
+    //this->getParent()->mutex_color_mat_.unlock();
 
     // Create marble sim
     cv::GaussianBlur(

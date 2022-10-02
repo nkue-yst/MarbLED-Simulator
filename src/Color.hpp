@@ -5,12 +5,12 @@
 struct Color
 {
 public:
-    Color(uint32_t red = 0, uint32_t green = 0, uint32_t blue = 0)
+    Color(uint8_t red = 0, uint8_t green = 0, uint8_t blue = 0)
         : r(red)
         , g(green)
         , b(blue)
     {
     }
 
-    uint32_t r, g, b;
+    uint8_t r, g, b;
 };
