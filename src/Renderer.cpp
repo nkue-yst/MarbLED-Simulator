@@ -131,5 +131,5 @@ void Renderer::update()
     cv::setMouseCallback(this->sim_chip_window_, mouseCallback, this);
     cv::setMouseCallback(this->sim_marble_window_, mouseCallback, this);
 
-    cv::waitKey(66);
+    cv::waitKey(33);
 }

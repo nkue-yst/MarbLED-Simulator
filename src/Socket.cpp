@@ -73,16 +73,31 @@ void Socket::run()
 
     while (!this->getParent()->getQuitFlag())
     {
-        /* ピクセルIDの受信 */
-        int8_t index_str[32] = {0};
-        recv(dest_sock, index_str, sizeof(index_str), 0);
-        uint16_t index = std::atoi((const char*)index_str);
+        std::vector<uint8_t> color_vec;
+        color_vec.resize(this->getParent()->getLedWidth() * this->getParent()->getLedHeight() * 3);
 
-        /* 色情報の受信 */
-        uint8_t color[3] = {0};
-        recv(dest_sock, color, sizeof(color), 0);
+        recv(dest_sock, color_vec.data(), this->getParent()->getLedWidth() * this->getParent()->getLedHeight() * 3, 0);
 
-        this->getParent()->color_mat_.at(index) = Color(color[0], color[1], color[2]);
+        uint32_t i = 0;
+        for (uint32_t y = 0; y < this->getParent()->getLedHeight(); y++)
+        {
+            for (uint32_t x = 0; x < this->getParent()->getLedWidth(); x++)
+            {
+                try
+                {
+                    this->getParent()->color_mat_.at(y * this->getParent()->getLedWidth() + x)
+                        = Color(
+                            color_vec.at(i++),
+                            color_vec.at(i++),
+                            color_vec.at(i++)
+                        );
+                }
+                catch(const std::exception& e)
+                {
+                    std::cerr << e.what() << '\n';
+                }
+            }
+        }
     }
 
     close(dest_sock);
