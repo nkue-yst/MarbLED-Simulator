@@ -106,9 +106,9 @@ void Renderer::update()
                     ),
                     static_cast<int32_t>(this->pixel_size_ / 2),
                     cv::Scalar(
-                        p_color.b,
+                        p_color.r,
                         p_color.g,
-                        p_color.r
+                        p_color.b
                     ),
                     -1
                 );
