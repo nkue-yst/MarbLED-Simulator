@@ -11,7 +11,7 @@ project(${PROJECT_NAME})
 
 file(GLOB TARGET_SRC src/*.hpp src/*.cpp)
 add_executable(${PROJECT_NAME} ${TARGET_SRC})
-target_link_libraries(${PROJECT_NAME})
+target_link_libraries(${PROJECT_NAME} cppzmq)
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
@@ -19,6 +19,17 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBRARIES})
+
+### Setup ZeroMQ ###
+option(WITH_TLS OFF)
+option(WITH_LIBSODIUM OFF)
+option(BUILD_TESTS OFF)
+option(CPPZMQ_BUILD_TESTS OFF)
+add_subdirectory(thirdparty/libzmq)
+set(ZeroMQ_DIR ${CMAKE_CURRENT_BINARY_DIR}/thirdparty/libzmq)
+add_subdirectory(thirdparty/cppzmq)
+include_directories(thirdparty/libzmq/include)
+include_directories(thirdparty/cppzmq)
 
 ### Setup oscpack ###
 set(OSCPACK_DIR ${CMAKE_SOURCE_DIR}/thirdparty/oscpack)
