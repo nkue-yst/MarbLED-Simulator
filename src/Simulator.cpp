@@ -17,10 +17,6 @@ Simulator::Simulator()
     for (uint32_t i = 0; i < this->getLedWidth() * this->getLedHeight(); i++)
             this->color_mat_[i] = Color(0, 0, 0);
 
-    // Initialize components
-    this->renderer_ = new Renderer(this);
-    this->socket_ = new Socket(this);
-
     printLog("Init Simulator", true);
 }
 
@@ -35,11 +31,15 @@ Simulator::~Simulator()
     printLog("Destroy Simulator", true);
 }
 
-void Simulator::run()
+void Simulator::run(std::string dest_ip)
 {
+    // Initialize components
+    this->socket_ = new Socket(this);
+    this->renderer_ = new Renderer(this, dest_ip);
+
     uint64_t frame_num = 0;  // Frame counter
 
-    this->runRecvSocket();
+    this->runRecvSocket(dest_ip);
 
     while (!this->update())
     {
@@ -56,12 +56,12 @@ bool Simulator::update()
     return this->quit_flag_;
 }
 
-void Simulator::runRecvSocket()
+void Simulator::runRecvSocket(std::string dest_ip)
 {
     // Start receiving data in another thread
-    auto recv_data = [this]()
+    auto recv_data = [this, dest_ip]()
     {
-        this->socket_->run();
+        this->socket_->run(dest_ip);
     };
 
     std::thread th_recv_data(recv_data);

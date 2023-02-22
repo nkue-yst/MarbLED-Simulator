@@ -9,7 +9,7 @@
 class Renderer : public SimComponentBase
 {
 public:
-    Renderer(class Simulator* simulator);
+    Renderer(class Simulator* simulator, std::string dest_ip);
     ~Renderer();
 
     void update();
@@ -30,4 +30,7 @@ private:
 public:
     /// Pixel size in simulator
     uint32_t pixel_size_;
+
+    /// Destination ip address for mouse event
+    std::string dest_ip_;
 };
