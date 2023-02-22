@@ -16,10 +16,10 @@ public:
     Simulator();
     ~Simulator();
 
-    void run();
+    void run(std::string dest_ip = "127.0.0.1");
     bool update();
 
-    void runRecvSocket();
+    void runRecvSocket(std::string dest_ip);
 
     void updateColorData();
 

@@ -9,8 +9,9 @@
 #include "Common.hpp"
 #include "Simulator.hpp"
 
-Renderer::Renderer(Simulator* simulator)
+Renderer::Renderer(Simulator* simulator, std::string dest_ip)
     : SimComponentBase(simulator)
+    , dest_ip_(dest_ip)
 {
     // Display size settings
     uint32_t display_width = 1920;
@@ -31,12 +32,12 @@ Renderer::~Renderer()
 
 void mouseCallback(int event, int x, int y, int flags, void* userdata)
 {
-    UdpTransmitSocket sock(IpEndpointName("127.0.0.1", 9000));
+    Renderer* renderer = static_cast<Renderer*>(userdata);
+
+    UdpTransmitSocket sock(IpEndpointName(renderer->dest_ip_.c_str(), 9000));
 
     char buff[1024];
     osc::OutboundPacketStream p(buff, 1024);
-
-    Renderer* renderer = static_cast<Renderer*>(userdata);
 
     // マウス座標をパネル上での座標に変換する
     int32_t pos_x = x / renderer->pixel_size_;

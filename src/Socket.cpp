@@ -20,12 +20,15 @@ Socket::~Socket()
     printLog("Destroy Socket", true);
 }
 
-void Socket::run()
+void Socket::run(std::string dest_ip)
 {
     /* 受信ソケットの作成 */
     zmq::context_t ctx;
     zmq::socket_t sub(ctx, zmq::socket_type::sub);
-    sub.connect("tcp://127.0.0.1:44100");
+
+    std::string dest = "tcp://" + dest_ip + ":44100";
+
+    sub.connect(dest);
 
     sub.setsockopt(ZMQ_SUBSCRIBE, "color");
 
