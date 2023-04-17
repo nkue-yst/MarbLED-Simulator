@@ -83,12 +83,13 @@ Renderer::~Renderer()
 
 void Renderer::update()
 {
-    // Terminate input
+    // Terminate input and mouse event
     SDL_Event ev;
     while (SDL_PollEvent(&ev))
     {
         ImGui_ImplSDL2_ProcessEvent(&ev);
 
+        // Terminate event
         if (ev.type == SDL_QUIT)
         {
             this->getParent()->setQuitFlag(true);
@@ -96,6 +97,46 @@ void Renderer::update()
         else if (ev.type == SDL_WINDOWEVENT && ev.window.event == SDL_WINDOWEVENT_CLOSE && ev.window.windowID == SDL_GetWindowID(this->win_))
         {
             this->getParent()->setQuitFlag(true);
+        }
+
+        // Mouse click event
+        if (ev.button.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT)
+        {
+            UdpTransmitSocket sock(IpEndpointName(this->dest_ip_.c_str(), 9000));
+
+            char buff[1024];
+            osc::OutboundPacketStream p(buff, 1024);
+
+            // Check window range
+            if (IMGUI_MARGIN / 2 < ev.button.x && ev.button.x < IMGUI_MARGIN / 2 + this->pixel_size_ * this->getParent()->getLedWidth())
+            {
+                int32_t pos_x = (ev.button.x - IMGUI_MARGIN / 2) / this->pixel_size_;
+                int32_t pos_y = -1;
+
+                if (IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT < ev.button.y && ev.button.y < IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight())
+                {
+                    pos_y = (ev.button.y - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MENU_BAR_HEIGHT - IMGUI_MARGIN / 2) / this->pixel_size_;
+                }
+                else if (IMGUI_MARGIN + IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight() < ev.button.y && ev.button.y < IMGUI_MARGIN + IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight() * 2)
+                {
+                    pos_y = (ev.button.y - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MENU_BAR_HEIGHT - IMGUI_MARGIN - IMGUI_MARGIN / 2 - this->pixel_size_ * this->getParent()->getLedHeight()) / this->pixel_size_;
+                }
+
+                if (pos_y != -1)
+                {
+                    p << osc::BeginBundleImmediate
+                        << osc::BeginMessage("/touch/0/point")
+                            << pos_x
+                            << pos_y
+                        << osc::EndMessage
+                    << osc::EndBundle;
+                    sock.Send(p.Data(), p.Size());
+                }
+
+                //std::cout << "x: " << pos_x << "\n" << "y: " << pos_y << std::endl;
+            }
+
+
         }
     }
 
