@@ -1,4 +1,9 @@
 #include <algorithm>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 #include "osc/OscOutboundPacketStream.h"
 #include "ip/IpEndpointName.h"
@@ -209,9 +214,24 @@ void Renderer::update()
     {
         if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::MenuItem("Save Image"))
+            if (ImGui::MenuItem("Save"))
             {
+                auto format_date = [](const std::chrono::system_clock::time_point& tp, const std::string& format)
+                {
+                    std::time_t t = std::chrono::system_clock::to_time_t(tp);
+                    std::tm tm = *std::localtime(&t);
 
+                    std::ostringstream oss;
+                    oss << std::put_time(&tm, format.c_str());
+
+                    return oss.str();
+                };
+
+                auto now = std::chrono::system_clock::now();
+                std::string formatted_date = format_date(now, "%Y-%m-%d-%H-%M-%S");
+
+                cv::imwrite("Chip_" + formatted_date + ".png", this->sim_chip_img_);
+                cv::imwrite("Marble_" + formatted_date + ".png", this->sim_marble_img_);
             }
 
             if (ImGui::MenuItem("Exit"))
@@ -241,8 +261,8 @@ void Renderer::update()
     ImGui::Begin("Marble Simulation", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
     // Convert and draw simulation image
-    cv::GaussianBlur(this->sim_chip_img_, this->sim_chip_img_, cv::Size(51, 51), 0);
-    simulation_img = this->convertCVmatToGLtexture(&this->sim_chip_img_);
+    cv::GaussianBlur(this->sim_chip_img_, this->sim_marble_img_, cv::Size(51, 51), 0);
+    simulation_img = this->convertCVmatToGLtexture(&this->sim_marble_img_);
     ImGui::Image((void*)(uintptr_t)simulation_img, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
 
     // End drawing window for filtering simulation

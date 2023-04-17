@@ -46,6 +46,9 @@ private:
     /// Chip simulator texture
     cv::Mat sim_chip_img_;
 
+    // Marble simulator texture
+    cv::Mat sim_marble_img_;
+
 public:
     /// Pixel size in simulator
     uint32_t pixel_size_;
