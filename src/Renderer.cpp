@@ -165,15 +165,52 @@ void Renderer::update()
         }
     }
 
+    // Start new ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
+    //////////////////////////////
+    ///// Draw setting panel /////
+    //////////////////////////////
+    ImGui::SetNextWindowSize(ImVec2(SETTING_PANEL_WIDTH, this->win_height_ + IMGUI_MARGIN * 2 + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImVec2(IMGUI_MARGIN + this->pixel_size_ * this->getParent()->getLedWidth(), 0.f));
+    ImGui::Begin("Simulator settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+
+    // Radio button to select marble thickness
+    static int32_t marble_thickness = 6;
+    ImGui::TextUnformatted("Marble Worktop Thickness");
+    ImGui::RadioButton("6mm", &marble_thickness, 6);
+    ImGui::SameLine();
+    ImGui::RadioButton("9mm", &marble_thickness, 9);
+    ImGui::SameLine();
+    ImGui::RadioButton("11mm", &marble_thickness, 11);
+
+    ImGui::TextUnformatted("");
+
+    // Slider for room brightness
+    static int32_t room_brightness = 50;
+    ImGui::TextUnformatted("Room Brightness");
+    ImGui::SliderInt("", &room_brightness, 0, 100);
+    ImGui::SameLine();
+    if (ImGui::Button("Reset"))
+    {
+        room_brightness = 50;
+    }
+
+    // End draw setting panel
+    ImGui::End();
+
     ///////////////////////////////////
     ///// Create simulation image /////
     ///////////////////////////////////
     // Set background mat
+    cv::Scalar bg_color = cv::Scalar(room_brightness + 50, room_brightness + 50, room_brightness + 50);
     this->sim_chip_img_ = cv::Mat(
         this->pixel_size_ * this->getParent()->getLedHeight(),
         this->pixel_size_ * this->getParent()->getLedWidth(),
         CV_8UC3,
-        cv::Scalar(120, 120, 120)
+        bg_color
     );
 
     // Draw chips
@@ -206,30 +243,6 @@ void Renderer::update()
             }
         }
     }
-
-    // Start new ImGui frame
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
-    ImGui::NewFrame();
-
-    //////////////////////////////
-    ///// Draw setting panel /////
-    //////////////////////////////
-    ImGui::SetNextWindowSize(ImVec2(SETTING_PANEL_WIDTH, this->win_height_ + IMGUI_MARGIN * 2 + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2(IMGUI_MARGIN + this->pixel_size_ * this->getParent()->getLedWidth(), 0.f));
-    ImGui::Begin("Simulator settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
-
-    // Radio button to select marble thickness
-    static int32_t marble_thickness = 6;
-    ImGui::TextUnformatted("Marble worktop thickness");
-    ImGui::RadioButton("6mm", &marble_thickness, 6);
-    ImGui::SameLine();
-    ImGui::RadioButton("9mm", &marble_thickness, 9);
-    ImGui::SameLine();
-    ImGui::RadioButton("11mm", &marble_thickness, 11);
-
-    // End draw setting panel
-    ImGui::End();
 
     ////////////////////////////////////
     ///// Draw led-chip simulation /////
