@@ -99,8 +99,11 @@ void Renderer::update()
             this->getParent()->setQuitFlag(true);
         }
 
-        // Mouse click event
-        if (ev.button.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT)
+        /////////////////////////////
+        ///// Mouse click event /////
+        /////////////////////////////
+        // When mouse left button is pressed
+        if (ev.button.button == SDL_BUTTON_LEFT || (ev.motion.state & SDL_BUTTON_LMASK != 0))
         {
             UdpTransmitSocket sock(IpEndpointName(this->dest_ip_.c_str(), 9000));
 
@@ -124,16 +127,25 @@ void Renderer::update()
 
                 if (pos_y != -1)
                 {
-                    p << osc::BeginBundleImmediate
-                        << osc::BeginMessage("/touch/0/point")
-                            << pos_x
-                            << pos_y
-                        << osc::EndMessage
-                    << osc::EndBundle;
-                    sock.Send(p.Data(), p.Size());
+                    if (ev.button.type == SDL_MOUSEBUTTONDOWN || ev.motion.type == SDL_MOUSEMOTION)
+                    {
+                        p << osc::BeginBundleImmediate
+                            << osc::BeginMessage("/touch/0/point")
+                                << pos_x
+                                << pos_y
+                            << osc::EndMessage
+                        << osc::EndBundle;
+                        sock.Send(p.Data(), p.Size());
+                    }
+                    else if (ev.button.type == SDL_MOUSEBUTTONUP)
+                    {
+                        p << osc::BeginBundleImmediate
+                            << osc::BeginMessage("/touch/0/delete")
+                            << osc::EndMessage
+                        << osc::EndBundle;
+                        sock.Send(p.Data(), p.Size());
+                    }
                 }
-
-                //std::cout << "x: " << pos_x << "\n" << "y: " << pos_y << std::endl;
             }
 
 
@@ -272,21 +284,6 @@ GLuint Renderer::convertCVmatToGLtexture(cv::Mat* mat)
 }
 
 /*
-void mouseCallback(int event, int x, int y, int flags, void* userdata)
-{
-    Renderer* renderer = static_cast<Renderer*>(userdata);
-
-    UdpTransmitSocket sock(IpEndpointName(renderer->dest_ip_.c_str(), 9000));
-
-    char buff[1024];
-    osc::OutboundPacketStream p(buff, 1024);
-
-    // マウス座標をパネル上での座標に変換する
-    int32_t pos_x = x / renderer->pixel_size_;
-    int32_t pos_y = y / renderer->pixel_size_;
-
-    static bool l_down = false;
-
     switch (event)
     {
     case cv::EVENT_LBUTTONDOWN:
@@ -316,7 +313,4 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata)
     default:
         break;
     }
-
-    //std::cout << "x: " << pos_x << "\n" << "y: " << pos_y << std::endl;
-}
 */
