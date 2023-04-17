@@ -147,8 +147,6 @@ void Renderer::update()
                     }
                 }
             }
-
-
         }
     }
 
@@ -282,35 +280,3 @@ GLuint Renderer::convertCVmatToGLtexture(cv::Mat* mat)
 
     return texture_id;
 }
-
-/*
-    switch (event)
-    {
-    case cv::EVENT_LBUTTONDOWN:
-        l_down = true;
-    case cv::EVENT_MOUSEMOVE:
-        if (l_down)
-        {
-            p << osc::BeginBundleImmediate
-                << osc::BeginMessage("/touch/0/point")
-                    << pos_x
-                    << pos_y
-                << osc::EndMessage
-            << osc::EndBundle;
-            sock.Send(p.Data(), p.Size());
-        }
-        break;
-
-    case cv::EVENT_LBUTTONUP:
-        l_down = false;
-        p << osc::BeginBundleImmediate
-            << osc::BeginMessage("/touch/0/delete")
-            << osc::EndMessage
-        << osc::EndBundle;
-        sock.Send(p.Data(), p.Size());
-        break;
-
-    default:
-        break;
-    }
-*/
