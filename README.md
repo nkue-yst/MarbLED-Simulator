@@ -10,4 +10,4 @@ $ ./MatrixLED-Simulator -d 192.168.1.2
 
 # 動作例 
 ## エアコン操作画面
-![AirConditioner-Sim](https://user-images.githubusercontent.com/39930174/224391515-968d6c72-2028-4570-9691-c1338399453c.png)
+![Simulator_AirConditionar](https://user-images.githubusercontent.com/39930174/232501108-6a1b266a-bc45-42cf-855a-75741d90515d.png)
