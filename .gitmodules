@@ -7,3 +7,9 @@
 [submodule "thirdparty/oscpack"]
 	path = thirdparty/oscpack
 	url = git@github.com:RossBencina/oscpack.git
+[submodule "thirdparty/imgui"]
+	path = thirdparty/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "thirdparty/cmake/sdl2"]
+	path = thirdparty/cmake/sdl2
+	url = https://github.com/aminosbh/sdl2-cmake-modules.git
