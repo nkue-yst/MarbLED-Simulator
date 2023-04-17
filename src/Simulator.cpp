@@ -108,8 +108,3 @@ void Simulator::runRecvSocket(std::string dest_ip)
     std::thread th_recv_data(recv_data);
     th_recv_data.detach();
 }
-
-void Simulator::updateColorData()
-{
-
-}

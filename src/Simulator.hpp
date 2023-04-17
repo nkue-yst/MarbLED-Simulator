@@ -21,8 +21,6 @@ public:
 
     void runRecvSocket(std::string dest_ip);
 
-    void updateColorData();
-
     bool getQuitFlag() const { return this->quit_flag_; }
     uint32_t getLedWidth() const { return this->led_width_; }
     uint32_t getLedHeight() const { return this->led_height_; }
