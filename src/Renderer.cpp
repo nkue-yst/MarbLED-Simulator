@@ -293,8 +293,8 @@ void Renderer::update()
     ImVec2 uv0 = ImVec2(0, 0);
     ImVec2 uv1 = ImVec2(1, 1);
 
-    GLuint simulation_img = this->convertCVmatToGLtexture(&this->sim_chip_img_);
-    ImGui::Image((void*)(uintptr_t)simulation_img, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
+    GLuint simulation_img1 = this->convertCVmatToGLtexture(&this->sim_chip_img_);
+    ImGui::Image((void*)(uintptr_t)simulation_img1, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
 
     // End led-chip simulation
     ImGui::End();
@@ -324,8 +324,8 @@ void Renderer::update()
     }
 
     cv::GaussianBlur(this->sim_chip_img_, this->sim_marble_img_, cv::Size(kernel_size, kernel_size), 0);
-    simulation_img = this->convertCVmatToGLtexture(&this->sim_marble_img_);
-    ImGui::Image((void*)(uintptr_t)simulation_img, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
+    GLuint simulation_img2 = this->convertCVmatToGLtexture(&this->sim_marble_img_);
+    ImGui::Image((void*)(uintptr_t)simulation_img2, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
 
     // End marble simulation
     ImGui::End();
@@ -339,6 +339,9 @@ void Renderer::update()
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     SDL_GL_SwapWindow(this->win_);
+
+    glDeleteTextures(1, &simulation_img1);
+    glDeleteTextures(1, &simulation_img2);
 }
 
 GLuint Renderer::convertCVmatToGLtexture(cv::Mat* mat)
