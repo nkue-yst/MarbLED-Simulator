@@ -39,8 +39,12 @@ Renderer::Renderer(Simulator* simulator, std::string dest_ip)
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
     // Display size settings
-    uint32_t display_width = 1920;
-    uint32_t display_height = 1080;
+    SDL_Rect r;
+    SDL_GetDisplayBounds(0, &r);
+    uint32_t display_width = r.w;
+    uint32_t display_height = r.h;
+
+    std::cout << "w: " << r.w << ", h: " << r.h << std::endl;
 
     // Pixel size settings
     this->pixel_size_ = std::min(display_width / this->getParent()->getLedWidth(), display_height / this->getParent()->getLedHeight()) / 2;
