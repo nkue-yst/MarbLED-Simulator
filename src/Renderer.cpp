@@ -13,6 +13,7 @@
 #include "Color.hpp"
 #include "Common.hpp"
 #include "Simulator.hpp"
+#include "Socket.hpp"
 
 #define IMGUI_MARGIN 17
 #define IMGUI_TITLE_BAR_HEIGHT 18
@@ -20,6 +21,11 @@
 
 #define SETTING_PANEL_WIDTH  250
 #define SETTING_PANEL_HEIGHT 400
+
+#define BOARD_WIDTH  18
+#define BOARD_HEIGHT 18
+
+#define PIXEL_SIZE 10
 
 Renderer::Renderer(Simulator* simulator, std::string dest_ip)
     : SimComponentBase(simulator)
@@ -40,22 +46,22 @@ Renderer::Renderer(Simulator* simulator, std::string dest_ip)
 
     // Display size settings
     SDL_Rect r;
-    SDL_GetDisplayBounds(0, &r);
-    uint32_t display_width = r.w;
+    //SDL_GetDisplayBounds(0, &r);
+    r.w = 1920;
+    r.h = 1080;
+
+    uint32_t display_width  = r.w;
     uint32_t display_height = r.h;
 
     std::cout << "w: " << r.w << ", h: " << r.h << std::endl;
 
-    // Pixel size settings
-    this->pixel_size_ = std::min(display_width / this->getParent()->getLedWidth(), display_height / this->getParent()->getLedHeight()) / 2;
-
     // Create window
     SDL_WindowFlags win_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
-    this->win_width_ = this->pixel_size_ * this->getParent()->getLedWidth();
+    this->win_width_  = this->pixel_size_ * this->getParent()->getLedWidth();
     this->win_height_ = this->pixel_size_ * this->getParent()->getLedHeight() * 2;
 
     this->win_ = SDL_CreateWindow(
-        "MarbLED SDK",
+        "MarbLED Simulator",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         this->win_width_ + IMGUI_MARGIN + SETTING_PANEL_WIDTH,
@@ -122,51 +128,51 @@ void Renderer::update()
         ///// Mouse click event /////
         /////////////////////////////
         // When mouse left button is pressed
-        if (ev.button.button == SDL_BUTTON_LEFT || (ev.motion.state & SDL_BUTTON_LMASK != 0))
-        {
-            UdpTransmitSocket sock(IpEndpointName(this->dest_ip_.c_str(), 9000));
-
-            char buff[1024];
-            osc::OutboundPacketStream p(buff, 1024);
-
-            // Check window range
-            if (IMGUI_MARGIN / 2 < ev.button.x && ev.button.x < IMGUI_MARGIN / 2 + this->pixel_size_ * this->getParent()->getLedWidth())
-            {
-                int32_t pos_x = (ev.button.x - IMGUI_MARGIN / 2) / this->pixel_size_;
-                int32_t pos_y = -1;
-
-                if (IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT < ev.button.y && ev.button.y < IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight())
-                {
-                    pos_y = (ev.button.y - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MENU_BAR_HEIGHT - IMGUI_MARGIN / 2) / this->pixel_size_;
-                }
-                else if (IMGUI_MARGIN + IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight() < ev.button.y && ev.button.y < IMGUI_MARGIN + IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight() * 2)
-                {
-                    pos_y = (ev.button.y - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MENU_BAR_HEIGHT - IMGUI_MARGIN - IMGUI_MARGIN / 2 - this->pixel_size_ * this->getParent()->getLedHeight()) / this->pixel_size_;
-                }
-
-                if (pos_y != -1)
-                {
-                    if (ev.button.type == SDL_MOUSEBUTTONDOWN || ev.motion.type == SDL_MOUSEMOTION)
-                    {
-                        p << osc::BeginBundleImmediate
-                            << osc::BeginMessage("/touch/0/point")
-                                << pos_x
-                                << pos_y
-                            << osc::EndMessage
-                        << osc::EndBundle;
-                        sock.Send(p.Data(), p.Size());
-                    }
-                    else if (ev.button.type == SDL_MOUSEBUTTONUP)
-                    {
-                        p << osc::BeginBundleImmediate
-                            << osc::BeginMessage("/touch/0/delete")
-                            << osc::EndMessage
-                        << osc::EndBundle;
-                        sock.Send(p.Data(), p.Size());
-                    }
-                }
-            }
-        }
+        // if (ev.button.button == SDL_BUTTON_LEFT || (ev.motion.state & SDL_BUTTON_LMASK != 0))
+        // {
+        //     UdpTransmitSocket sock(IpEndpointName(this->dest_ip_.c_str(), 9000));
+// 
+        //     char buff[1024];
+        //     osc::OutboundPacketStream p(buff, 1024);
+// 
+        //     // Check window range
+        //     if (IMGUI_MARGIN / 2 < ev.button.x && ev.button.x < IMGUI_MARGIN / 2 + this->pixel_size_ * this->getParent()->getLedWidth())
+        //     {
+        //         int32_t pos_x = (ev.button.x - IMGUI_MARGIN / 2) / this->pixel_size_;
+        //         int32_t pos_y = -1;
+// 
+        //         if (IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT < ev.button.y && ev.button.y < IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight())
+        //         {
+        //             pos_y = (ev.button.y - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MENU_BAR_HEIGHT - IMGUI_MARGIN / 2) / this->pixel_size_;
+        //         }
+        //         else if (IMGUI_MARGIN + IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight() < ev.button.y && ev.button.y < IMGUI_MARGIN + IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * // this->getParent()->getLedHeight() * 2)
+        //         {
+        //             pos_y = (ev.button.y - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MENU_BAR_HEIGHT - IMGUI_MARGIN - IMGUI_MARGIN / 2 - this->pixel_size_ * this->getParent()->getLedHeight()) / this->pixel_size_;
+        //         }
+// 
+        //         if (pos_y != -1)
+        //         {
+        //             if (ev.button.type == SDL_MOUSEBUTTONDOWN || ev.motion.type == SDL_MOUSEMOTION)
+        //             {
+        //                 p << osc::BeginBundleImmediate
+        //                     << osc::BeginMessage("/touch/0/point")
+        //                         << pos_x
+        //                         << pos_y
+        //                     << osc::EndMessage
+        //                 << osc::EndBundle;
+        //                 sock.Send(p.Data(), p.Size());
+        //             }
+        //             else if (ev.button.type == SDL_MOUSEBUTTONUP)
+        //             {
+        //                 p << osc::BeginBundleImmediate
+        //                     << osc::BeginMessage("/touch/0/delete")
+        //                     << osc::EndMessage
+        //                 << osc::EndBundle;
+        //                 sock.Send(p.Data(), p.Size());
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     // Start new ImGui frame
@@ -180,6 +186,16 @@ void Renderer::update()
     ImGui::SetNextWindowSize(ImVec2(SETTING_PANEL_WIDTH, this->win_height_ + IMGUI_MARGIN * 2 + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
     ImGui::SetNextWindowPos(ImVec2(IMGUI_MARGIN + this->pixel_size_ * this->getParent()->getLedWidth(), 0.f));
     ImGui::Begin("Simulator settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+
+    // Slider for size of LED matrix
+    static int32_t led_size[2]  = { 64, 32 };
+    if (ImGui::SliderInt2("LED Matrix Size", led_size, 1, 128))
+    {
+        this->sim_width_  = led_size[0] * PIXEL_SIZE;
+        this->sim_height_ = led_size[1] * PIXEL_SIZE;
+    }
+
+    ImGui::TextUnformatted("");
 
     // Radio button to select marble thickness
     static int32_t marble_thickness = 6;

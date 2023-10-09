@@ -50,8 +50,8 @@ private:
     cv::Mat sim_marble_img_;
 
 public:
-    /// Pixel size in simulator
-    uint32_t pixel_size_;
+    uint32_t sim_width_;
+    uint32_t sim_height_;
 
     /// Destination ip address for mouse event
     std::string dest_ip_;
