@@ -167,15 +167,21 @@ void Renderer::update()
         //         }
         //     }
         // }
+
+        ////////////////////////////////////////
+        ///// Update window size variables /////
+        ////////////////////////////////////////
+        SDL_SetWindowMinimumSize(this->win_, MINIMUM_WIN_WIDTH, MINIMUM_WIN_HEIGHT);
+        if (ev.type == SDL_WINDOWEVENT && ev.window.event == SDL_WINDOWEVENT_RESIZED)
+        {
+            SDL_GetWindowSize(this->win_, &this->win_width_, &this->win_height_);
+        }
     }
 
     // Start new ImGui frame
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
-
-    // Update window size variables
-    SDL_GetWindowSize(this->win_, &this->win_width_, &this->win_height_);
 
     //////////////////////////////
     ///// Draw setting panel /////
