@@ -19,16 +19,21 @@
 #define IMGUI_TITLE_BAR_HEIGHT 18
 #define IMGUI_MENU_BAR_HEIGHT 19
 
-#define SETTING_PANEL_WIDTH  250
-#define SETTING_PANEL_HEIGHT 400
-
 #define BOARD_WIDTH  18
 #define BOARD_HEIGHT 18
+
+#define SETTING_PANEL_WIDTH  250
+
+#define MINIMUM_SIM_WIDTH 300
+#define MINIMUM_WIN_WIDTH (MINIMUM_SIM_WIDTH + SETTING_PANEL_WIDTH)
+#define MINIMUM_WIN_HEIGHT 400
 
 #define PIXEL_SIZE 10
 
 Renderer::Renderer(Simulator* simulator, std::string dest_ip)
     : SimComponentBase(simulator)
+    , sim_width_(MINIMUM_SIM_WIDTH)
+    , sim_height_(MINIMUM_WIN_HEIGHT / 2)
     , dest_ip_(dest_ip)
 {
     // Initialize SDL system
@@ -44,28 +49,17 @@ Renderer::Renderer(Simulator* simulator, std::string dest_ip)
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-    // Display size settings
-    SDL_Rect r;
-    //SDL_GetDisplayBounds(0, &r);
-    r.w = 1920;
-    r.h = 1080;
-
-    uint32_t display_width  = r.w;
-    uint32_t display_height = r.h;
-
-    std::cout << "w: " << r.w << ", h: " << r.h << std::endl;
-
     // Create window
-    SDL_WindowFlags win_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
-    this->win_width_  = this->pixel_size_ * this->getParent()->getLedWidth();
-    this->win_height_ = this->pixel_size_ * this->getParent()->getLedHeight() * 2;
+    SDL_WindowFlags win_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    this->win_width_  = MINIMUM_WIN_WIDTH;
+    this->win_height_ = MINIMUM_WIN_HEIGHT;
 
     this->win_ = SDL_CreateWindow(
         "MarbLED Simulator",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        this->win_width_ + IMGUI_MARGIN + SETTING_PANEL_WIDTH,
-        this->win_height_ + IMGUI_MARGIN * 2 + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT,
+        this->win_width_,
+        this->win_height_,
         win_flags
     );
 
@@ -180,20 +174,22 @@ void Renderer::update()
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
+    // Update window size variables
+    SDL_GetWindowSize(this->win_, &this->win_width_, &this->win_height_);
+
     //////////////////////////////
     ///// Draw setting panel /////
     //////////////////////////////
-    ImGui::SetNextWindowSize(ImVec2(SETTING_PANEL_WIDTH, this->win_height_ + IMGUI_MARGIN * 2 + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2(IMGUI_MARGIN + this->pixel_size_ * this->getParent()->getLedWidth(), 0.f));
+    ImGui::SetNextWindowPos(ImVec2(this->win_width_ - SETTING_PANEL_WIDTH, 0.f));
+    ImGui::SetNextWindowSize(ImVec2(SETTING_PANEL_WIDTH, this->win_height_), ImGuiCond_Always);
     ImGui::Begin("Simulator settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
     // Slider for size of LED matrix
-    static int32_t led_size[2]  = { 64, 32 };
-    if (ImGui::SliderInt2("LED Matrix Size", led_size, 1, 128))
-    {
-        this->sim_width_  = led_size[0] * PIXEL_SIZE;
-        this->sim_height_ = led_size[1] * PIXEL_SIZE;
-    }
+    static int32_t led_width  = 64;
+    static int32_t led_height = 32;
+    ImGui::TextUnformatted("LED Size");
+    ImGui::SliderInt("Width",  &led_width,  1, BOARD_WIDTH  * 10);
+    ImGui::SliderInt("Height", &led_height, 1, BOARD_HEIGHT * 10);
 
     ImGui::TextUnformatted("");
 
@@ -225,127 +221,127 @@ void Renderer::update()
     ///// Create simulation image /////
     ///////////////////////////////////
     // Set background mat
-    cv::Scalar bg_color = cv::Scalar(room_brightness + 50, room_brightness + 50, room_brightness + 50);
-    this->sim_chip_img_ = cv::Mat(
-        this->pixel_size_ * this->getParent()->getLedHeight(),
-        this->pixel_size_ * this->getParent()->getLedWidth(),
-        CV_8UC3,
-        bg_color
-    );
-
-    // Draw chips
-    std::vector<Color> color_mat = this->getParent()->getColors();
-    uint32_t width = this->getParent()->getLedWidth();
-    uint32_t height = this->getParent()->getLedHeight();
-
-    for (uint32_t y = 0; y < height; y++)
-    {
-        for (uint32_t x = 0; x < width; x++)
-        {
-            Color p_color = color_mat[x + width * y];
-
-            if (!(p_color.r == 0 && p_color.g == 0 && p_color.b == 0))
-            {
-                cv::circle(
-                    this->sim_chip_img_,
-                    cv::Point(
-                        this->pixel_size_ * x + this->pixel_size_ / 2,
-                        this->pixel_size_ * y + this->pixel_size_ / 2
-                    ),
-                    static_cast<int32_t>(this->pixel_size_ / 2),
-                    cv::Scalar(
-                        p_color.r,
-                        p_color.g,
-                        p_color.b
-                    ),
-                    -1
-                );
-            }
-        }
-    }
-
-    ////////////////////////////////////
-    ///// Draw led-chip simulation /////
-    ////////////////////////////////////
-    ImGui::SetNextWindowSize(ImVec2(this->win_width_ + IMGUI_MARGIN, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2(0.f, 0.f));
-    ImGui::Begin("MarbLED: Simulator", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
-
-    /////////////////////////
-    ///// Draw menu bar /////
-    /////////////////////////
-    if (ImGui::BeginMenuBar())
-    {
-        if (ImGui::BeginMenu("File"))
-        {
-            if (ImGui::MenuItem("Save"))
-            {
-                auto format_date = [](const std::chrono::system_clock::time_point& tp, const std::string& format)
-                {
-                    std::time_t t = std::chrono::system_clock::to_time_t(tp);
-                    std::tm tm = *std::localtime(&t);
-
-                    std::ostringstream oss;
-                    oss << std::put_time(&tm, format.c_str());
-
-                    return oss.str();
-                };
-
-                auto now = std::chrono::system_clock::now();
-                std::string formatted_date = format_date(now, "%Y-%m-%d-%H-%M-%S");
-
-                cv::imwrite("Chip_" + formatted_date + ".png", this->sim_chip_img_);
-                cv::imwrite("Marble_" + formatted_date + ".png", this->sim_marble_img_);
-            }
-
-            if (ImGui::MenuItem("Exit"))
-            {
-                this->getParent()->setQuitFlag(true);
-            }
-
-            ImGui::EndMenu();
-        }
-
-        ImGui::EndMenuBar();
-    }
-
-    // Convert and draw simulation image
-    ImVec2 uv0 = ImVec2(0, 0);
-    ImVec2 uv1 = ImVec2(1, 1);
-
-    GLuint simulation_img1 = this->convertCVmatToGLtexture(&this->sim_chip_img_);
-    ImGui::Image((void*)(uintptr_t)simulation_img1, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
-
-    // End led-chip simulation
-    ImGui::End();
-    
-    /////////////////////////////////////
-    ///// Drawing marble simulation /////
-    /////////////////////////////////////
-    ImGui::SetNextWindowSize(ImVec2(this->win_width_ + IMGUI_MARGIN, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2(0.f, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT));
-    ImGui::Begin("Marble Simulation", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
-
-    // Convert and draw simulation image
-    int32_t kernel_size;
-    switch (marble_thickness)
-    {
-    case 6:
-        kernel_size = 37;
-        break;
-    case 9:
-        kernel_size = 41;
-        break;
-    case 11:
-        kernel_size = 55;
-        break;
-    default:
-        break;
-    }
-
-    cv::GaussianBlur(this->sim_chip_img_, this->sim_marble_img_, cv::Size(kernel_size, kernel_size), 0);
-    GLuint simulation_img2 = this->convertCVmatToGLtexture(&this->sim_marble_img_);
-    ImGui::Image((void*)(uintptr_t)simulation_img2, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
+    //cv::Scalar bg_color = cv::Scalar(room_brightness + 50, room_brightness + 50, room_brightness + 50);
+    //this->sim_chip_img_ = cv::Mat(
+    //    this->pixel_size_ * this->getParent()->getLedHeight(),
+    //    this->pixel_size_ * this->getParent()->getLedWidth(),
+    //    CV_8UC3,
+    //    bg_color
+    //);
+//
+    //// Draw chips
+    //std::vector<Color> color_mat = this->getParent()->getColors();
+    //uint32_t width = this->getParent()->getLedWidth();
+    //uint32_t height = this->getParent()->getLedHeight();
+//
+    //for (uint32_t y = 0; y < height; y++)
+    //{
+    //    for (uint32_t x = 0; x < width; x++)
+    //    {
+    //        Color p_color = color_mat[x + width * y];
+//
+    //        if (!(p_color.r == 0 && p_color.g == 0 && p_color.b == 0))
+    //        {
+    //            cv::circle(
+    //                this->sim_chip_img_,
+    //                cv::Point(
+    //                    this->pixel_size_ * x + this->pixel_size_ / 2,
+    //                    this->pixel_size_ * y + this->pixel_size_ / 2
+    //                ),
+    //                static_cast<int32_t>(this->pixel_size_ / 2),
+    //                cv::Scalar(
+    //                    p_color.r,
+    //                    p_color.g,
+    //                    p_color.b
+    //                ),
+    //                -1
+    //            );
+    //        }
+    //    }
+    //}
+//
+    //////////////////////////////////////
+    /////// Draw led-chip simulation /////
+    //////////////////////////////////////
+    //ImGui::SetNextWindowSize(ImVec2(this->win_width_ + IMGUI_MARGIN, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
+    //ImGui::SetNextWindowPos(ImVec2(0.f, 0.f));
+    //ImGui::Begin("MarbLED: Simulator", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+//
+    ///////////////////////////
+    /////// Draw menu bar /////
+    ///////////////////////////
+    //if (ImGui::BeginMenuBar())
+    //{
+    //    if (ImGui::BeginMenu("File"))
+    //    {
+    //        if (ImGui::MenuItem("Save"))
+    //        {
+    //            auto format_date = [](const std::chrono::system_clock::time_point& tp, const std::string& format)
+    //            {
+    //                std::time_t t = std::chrono::system_clock::to_time_t(tp);
+    //                std::tm tm = *std::localtime(&t);
+//
+    //                std::ostringstream oss;
+    //                oss << std::put_time(&tm, format.c_str());
+//
+    //                return oss.str();
+    //            };
+//
+    //            auto now = std::chrono::system_clock::now();
+    //            std::string formatted_date = format_date(now, "%Y-%m-%d-%H-%M-%S");
+//
+    //            cv::imwrite("Chip_" + formatted_date + ".png", this->sim_chip_img_);
+    //            cv::imwrite("Marble_" + formatted_date + ".png", this->sim_marble_img_);
+    //        }
+//
+    //        if (ImGui::MenuItem("Exit"))
+    //        {
+    //            this->getParent()->setQuitFlag(true);
+    //        }
+//
+    //        ImGui::EndMenu();
+    //    }
+//
+    //    ImGui::EndMenuBar();
+    //}
+//
+    //// Convert and draw simulation image
+    //ImVec2 uv0 = ImVec2(0, 0);
+    //ImVec2 uv1 = ImVec2(1, 1);
+//
+    //GLuint simulation_img1 = this->convertCVmatToGLtexture(&this->sim_chip_img_);
+    //ImGui::Image((void*)(uintptr_t)simulation_img1, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
+//
+    //// End led-chip simulation
+    //ImGui::End();
+    //
+    ///////////////////////////////////////
+    /////// Drawing marble simulation /////
+    ///////////////////////////////////////
+    //ImGui::SetNextWindowSize(ImVec2(this->win_width_ + IMGUI_MARGIN, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
+    //ImGui::SetNextWindowPos(ImVec2(0.f, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT));
+    //ImGui::Begin("Marble Simulation", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+//
+    //// Convert and draw simulation image
+    //int32_t kernel_size;
+    //switch (marble_thickness)
+    //{
+    //case 6:
+    //    kernel_size = 37;
+    //    break;
+    //case 9:
+    //    kernel_size = 41;
+    //    break;
+    //case 11:
+    //    kernel_size = 55;
+    //    break;
+    //default:
+    //    break;
+    //}
+//
+    //cv::GaussianBlur(this->sim_chip_img_, this->sim_marble_img_, cv::Size(kernel_size, kernel_size), 0);
+    //GLuint simulation_img2 = this->convertCVmatToGLtexture(&this->sim_marble_img_);
+    //ImGui::Image((void*)(uintptr_t)simulation_img2, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
 
     // End marble simulation
     ImGui::End();
@@ -360,8 +356,8 @@ void Renderer::update()
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     SDL_GL_SwapWindow(this->win_);
 
-    glDeleteTextures(1, &simulation_img1);
-    glDeleteTextures(1, &simulation_img2);
+    //glDeleteTextures(1, &simulation_img1);
+    //glDeleteTextures(1, &simulation_img2);
 }
 
 GLuint Renderer::convertCVmatToGLtexture(cv::Mat* mat)
