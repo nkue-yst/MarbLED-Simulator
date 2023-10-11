@@ -49,6 +49,9 @@ private:
     // Marble simulator texture
     cv::Mat sim_marble_img_;
 
+    // Is pending while moving or resizing window
+    bool is_resizing_;
+
 public:
     uint32_t sim_width_;
     uint32_t sim_height_;
