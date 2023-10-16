@@ -36,7 +36,7 @@ Renderer::Renderer(Simulator* simulator, std::string dest_ip)
     , sim_width_(MINIMUM_SIM_WIDTH)
     , sim_height_((MINIMUM_WIN_HEIGHT - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MARGIN * 4) / 2)
     , dest_ip_(dest_ip)
-    , is_resizing_(false)
+    , need_update_(true)
 {
     // Initialize SDL system
     SDL_Init(SDL_INIT_VIDEO);
@@ -104,6 +104,13 @@ Renderer::~Renderer()
 
 void Renderer::update()
 {
+    /////////////////////////
+    ///// Frame counter /////
+    /////////////////////////
+    static uint64_t frame = 0;
+    ++frame;
+    //std::cout << "End the frame: " << frame << std::endl;
+
     // Terminate input and mouse event
     SDL_Event ev;
     while (SDL_PollEvent(&ev))
@@ -169,207 +176,202 @@ void Renderer::update()
         //         }
         //     }
         // }
-
-        ////////////////////////////////////////
-        ///// Update window size variables /////
-        ////////////////////////////////////////
-        SDL_SetWindowMinimumSize(this->win_, MINIMUM_WIN_WIDTH, MINIMUM_WIN_HEIGHT);
-        if (ev.type == SDL_WINDOWEVENT && ev.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)  // While not resizing the window
-        {
-            if (this->is_resizing_)
-            {
-                SDL_GetWindowSize(this->win_, &this->win_width_, &this->win_height_);
-            }
-            this->is_resizing_ = false;
-        }
-        else  // While resizing the window
-        {
-            this->is_resizing_ = true;
-        }
     }
 
-    if (!this->is_resizing_)
+    /////////////////////////////////////
+    ///// Check current window size /////
+    /////////////////////////////////////
     {
-        // Start new ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
-        ImGui::NewFrame();
+        bool resizing = false;
 
-        //////////////////////////////
-        ///// Draw setting panel /////
-        //////////////////////////////
-        ImGui::SetNextWindowPos(ImVec2(this->win_width_ - SETTING_PANEL_WIDTH, 0.f));
-        ImGui::SetNextWindowSize(ImVec2(SETTING_PANEL_WIDTH, this->win_height_), ImGuiCond_Always);
-        ImGui::Begin("Simulator settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+        int32_t pre_width  = this->win_width_;
+        int32_t pre_height = this->win_height_;
 
-        // Slider for size of LED matrix
-        static int32_t led_width  = 64;
-        static int32_t led_height = 32;
-        ImGui::TextUnformatted("LED Size");
-        ImGui::SliderInt("Width",  &led_width,  BOARD_WIDTH,  BOARD_WIDTH  * 10);
-        ImGui::SliderInt("Height", &led_height, BOARD_HEIGHT, BOARD_HEIGHT * 10);
+        SDL_SetWindowMinimumSize(this->win_, MINIMUM_WIN_WIDTH, MINIMUM_WIN_HEIGHT);
+        SDL_GetWindowSize(this->win_, &this->win_width_, &this->win_height_);
 
-        ImGui::TextUnformatted("");
-
-        // Radio button to select marble thickness
-        static int32_t marble_thickness = 6;
-        ImGui::TextUnformatted("Marble Worktop Thickness");
-        ImGui::RadioButton("6mm", &marble_thickness, 6);
-        ImGui::SameLine();
-        ImGui::RadioButton("9mm", &marble_thickness, 9);
-        ImGui::SameLine();
-        ImGui::RadioButton("11mm", &marble_thickness, 11);
-
-        ImGui::TextUnformatted("");
-
-        // Slider for room brightness
-        static int32_t room_brightness = 50;
-        ImGui::TextUnformatted("Room Brightness");
-        ImGui::SliderInt("", &room_brightness, 0, 100);
-        ImGui::SameLine();
-        if (ImGui::Button("Reset"))
+        if (pre_width != this->win_width_ || pre_height != this->win_height_)
         {
-            room_brightness = 50;
+            // When changed the window size
+            resizing = true;
         }
 
-        // End draw setting panel
-        ImGui::End();
+        this->need_update_ = !resizing;
+    }
 
-        ///////////////////////////////////
-        ///// Create simulation image /////
-        ///////////////////////////////////
-        uint32_t width  = this->getParent()->getLedWidth();
-        uint32_t height = this->getParent()->getLedHeight();
+    if (!this->need_update_)
+    {
+        //std::cout << "Skip the frame.: " << frame << std::endl;
+        return;
+    }
 
-        // Set background mat
-        cv::Scalar bg_color = cv::Scalar(room_brightness + 50, room_brightness + 50, room_brightness + 50);
-        this->sim_chip_img_ = cv::Mat(
-            PIXEL_SIZE * height + PIXEL_PITCH * (height + 1),
-            PIXEL_SIZE * width  + PIXEL_PITCH * (width  + 1),
-            CV_8UC3,
-            bg_color
-        );
+    // Start new ImGui frame
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
 
-        // Draw chips
-        std::vector<Color> color_mat = this->getParent()->getColors();
+    //////////////////////////////
+    ///// Draw setting panel /////
+    //////////////////////////////
+    ImGui::SetNextWindowPos(ImVec2(this->win_width_ - SETTING_PANEL_WIDTH, 0.f));
+    ImGui::SetNextWindowSize(ImVec2(SETTING_PANEL_WIDTH, this->win_height_), ImGuiCond_Always);
+    ImGui::Begin("Simulator settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
-        for (uint32_t y = 0; y < height; ++y)
+    // Slider for size of LED matrix
+    static int32_t led_width  = 64;
+    static int32_t led_height = 32;
+    ImGui::TextUnformatted("LED Size");
+    ImGui::SliderInt("Width",  &led_width,  BOARD_WIDTH,  BOARD_WIDTH  * 10);
+    ImGui::SliderInt("Height", &led_height, BOARD_HEIGHT, BOARD_HEIGHT * 10);
+
+    ImGui::TextUnformatted("");
+
+    // Radio button to select marble thickness
+    static int32_t marble_thickness = 6;
+    ImGui::TextUnformatted("Marble Worktop Thickness");
+    ImGui::RadioButton("6mm", &marble_thickness, 6);
+    ImGui::SameLine();
+    ImGui::RadioButton("9mm", &marble_thickness, 9);
+    ImGui::SameLine();
+    ImGui::RadioButton("11mm", &marble_thickness, 11);
+
+    ImGui::TextUnformatted("");
+
+    // Slider for room brightness
+    static int32_t room_brightness = 50;
+    ImGui::TextUnformatted("Room Brightness");
+    ImGui::SliderInt("", &room_brightness, 0, 100);
+    ImGui::SameLine();
+    if (ImGui::Button("Reset"))
+    {
+        room_brightness = 50;
+    }
+
+    // End draw setting panel
+    ImGui::End();
+
+    ///////////////////////////////////
+    ///// Create simulation image /////
+    ///////////////////////////////////
+    uint32_t width  = this->getParent()->getLedWidth();
+    uint32_t height = this->getParent()->getLedHeight();
+
+    // Set background mat
+    cv::Scalar bg_color = cv::Scalar(room_brightness + 50, room_brightness + 50, room_brightness + 50);
+    this->sim_chip_img_ = cv::Mat(
+        PIXEL_SIZE * height + PIXEL_PITCH * (height + 1),
+        PIXEL_SIZE * width  + PIXEL_PITCH * (width  + 1),
+        CV_8UC3,
+        bg_color
+    );
+
+    // Draw chips
+    std::vector<Color> color_mat = this->getParent()->getColors();
+
+    for (uint32_t y = 0; y < height; ++y)
+    {
+        for (uint32_t x = 0; x < width; ++x)
         {
-            for (uint32_t x = 0; x < width; ++x)
-            {
-                Color p_color = color_mat[x + width * y];
+            Color p_color = color_mat[x + width * y];
 
-                if (!(p_color.r == 0 && p_color.g == 0 && p_color.b == 0))
-                {
-                    cv::circle(
-                        this->sim_chip_img_,
-                        cv::Point(
-                            PIXEL_SIZE * (x + 0.5) + PIXEL_PITCH * (x + 1),
-                            PIXEL_SIZE * (y + 0.5) + PIXEL_PITCH * (y + 1)
-                        ),
-                        static_cast<int32_t>(
-                            PIXEL_SIZE / 2
-                        ),
-                        cv::Scalar(
-                            p_color.r,
-                            p_color.g,
-                            p_color.b
-                        ),
-                        -1
-                    );
-                }
+            if (!(p_color.r == 0 && p_color.g == 0 && p_color.b == 0))
+            {
+                cv::circle(
+                    this->sim_chip_img_,
+                    cv::Point(
+                        PIXEL_SIZE * (x + 0.5) + PIXEL_PITCH * (x + 1),
+                        PIXEL_SIZE * (y + 0.5) + PIXEL_PITCH * (y + 1)
+                    ),
+                    static_cast<int32_t>(
+                        PIXEL_SIZE / 2
+                    ),
+                    cv::Scalar(
+                        p_color.r,
+                        p_color.g,
+                        p_color.b
+                    ),
+                    -1
+                );
             }
         }
-
-        ////////////////////////////////////
-        ///// Draw led-chip simulation /////
-        ////////////////////////////////////
-        this->sim_width_  = this->win_width_  - SETTING_PANEL_WIDTH;
-        this->sim_height_ = this->win_height_ / 2;
-
-        ImGui::SetNextWindowPos(ImVec2(0.f, 0.f));
-        ImGui::SetNextWindowSize(ImVec2(this->sim_width_, this->sim_height_), ImGuiCond_Always);
-
-        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
-        ImGui::Begin("MarbLED: Simulator", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
-
-        // Convert and draw simulation image
-        ImVec2 uv0 = ImVec2(0, 0);
-        ImVec2 uv1 = ImVec2(1, 1);
-
-        cv::resize(
-            this->sim_chip_img_,
-            this->sim_chip_img_,
-            cv::Size(),
-            (double)this->sim_width_ / this->sim_chip_img_.cols,
-            (double)this->sim_width_ / this->sim_chip_img_.cols
-        );
-        GLuint simulation_img1 = this->convertCVmatToGLtexture(&this->sim_chip_img_);
-        ImGui::Image((void*)(uintptr_t)simulation_img1, ImVec2(this->sim_chip_img_.cols, this->sim_chip_img_.rows), uv0, uv1);
-
-        // End led-chip simulation
-        ImGui::End();
-        ImGui::PopStyleVar();
-
-        /////////////////////////////////////
-        ///// Drawing marble simulation /////
-        /////////////////////////////////////
-        //ImGui::SetNextWindowSize(ImVec2(this->win_width_ + IMGUI_MARGIN, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
-        //ImGui::SetNextWindowPos(ImVec2(0.f, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT));
-        //ImGui::Begin("Marble Simulation", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
-    //
-        //// Convert and draw simulation image
-        //int32_t kernel_size;
-        //switch (marble_thickness)
-        //{
-        //case 6:
-        //    kernel_size = 37;
-        //    break;
-        //case 9:
-        //    kernel_size = 41;
-        //    break;
-        //case 11:
-        //    kernel_size = 55;
-        //    break;
-        //default:
-        //    break;
-        //}
-    //
-        //cv::GaussianBlur(this->sim_chip_img_, this->sim_marble_img_, cv::Size(kernel_size, kernel_size), 0);
-        //GLuint simulation_img2 = this->convertCVmatToGLtexture(&this->sim_marble_img_);
-        //ImGui::Image((void*)(uintptr_t)simulation_img2, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
-        //
-        //// End marble simulation
-        //ImGui::End();
-
-        /////////////////////
-        ///// Rendering /////
-        /////////////////////
-        ImGui::Render();
-
-        glViewport(0, 0, (int)this->io_->DisplaySize.x, (int)this->io_->DisplaySize.y);
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        SDL_GL_SwapWindow(this->win_);
-
-        glDeleteTextures(1, &simulation_img1);
-        //glDeleteTextures(1, &simulation_img2);
-
-        // Control frame rate
-        std::this_thread::sleep_for(std::chrono::milliseconds(16));
-
-
-        /***************************************
-         ***************************************
-         ********** Debug Debug Debug **********
-         ***************************************
-         ***************************************/
-        /////////////////////////
-        ///// Frame counter /////
-        /////////////////////////
-        // static uint64_t frame = 0;
-        // std::cout << "End the frame: " << ++frame << std::endl;
     }
+
+    ////////////////////////////////////
+    ///// Draw led-chip simulation /////
+    ////////////////////////////////////
+    this->sim_width_  = this->win_width_  - SETTING_PANEL_WIDTH;
+    this->sim_height_ = this->win_height_ / 2;
+
+    ImGui::SetNextWindowPos(ImVec2(0.f, 0.f));
+    ImGui::SetNextWindowSize(ImVec2(this->sim_width_, this->sim_height_), ImGuiCond_Always);
+
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::Begin("MarbLED: Simulator", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
+
+    // Convert and draw simulation image
+    ImVec2 uv0 = ImVec2(0, 0);
+    ImVec2 uv1 = ImVec2(1, 1);
+
+    cv::resize(
+        this->sim_chip_img_,
+        this->sim_chip_img_,
+        cv::Size(),
+        (double)this->sim_width_ / this->sim_chip_img_.cols,
+        (double)this->sim_width_ / this->sim_chip_img_.cols
+    );
+    GLuint simulation_img1 = this->convertCVmatToGLtexture(&this->sim_chip_img_);
+    ImGui::Image((void*)(uintptr_t)simulation_img1, ImVec2(this->sim_chip_img_.cols, this->sim_chip_img_.rows), uv0, uv1);
+
+    // End led-chip simulation
+    ImGui::End();
+    ImGui::PopStyleVar();
+
+    /////////////////////////////////////
+    ///// Drawing marble simulation /////
+    /////////////////////////////////////
+    //ImGui::SetNextWindowSize(ImVec2(this->win_width_ + IMGUI_MARGIN, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
+    //ImGui::SetNextWindowPos(ImVec2(0.f, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT));
+    //ImGui::Begin("Marble Simulation", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+//
+    //// Convert and draw simulation image
+    //int32_t kernel_size;
+    //switch (marble_thickness)
+    //{
+    //case 6:
+    //    kernel_size = 37;
+    //    break;
+    //case 9:
+    //    kernel_size = 41;
+    //    break;
+    //case 11:
+    //    kernel_size = 55;
+    //    break;
+    //default:
+    //    break;
+    //}
+//
+    //cv::GaussianBlur(this->sim_chip_img_, this->sim_marble_img_, cv::Size(kernel_size, kernel_size), 0);
+    //GLuint simulation_img2 = this->convertCVmatToGLtexture(&this->sim_marble_img_);
+    //ImGui::Image((void*)(uintptr_t)simulation_img2, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
+    //
+    //// End marble simulation
+    //ImGui::End();
+
+    /////////////////////
+    ///// Rendering /////
+    /////////////////////
+    ImGui::Render();
+
+    glViewport(0, 0, (int)this->io_->DisplaySize.x, (int)this->io_->DisplaySize.y);
+    glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    SDL_GL_SwapWindow(this->win_);
+
+    glDeleteTextures(1, &simulation_img1);
+    //glDeleteTextures(1, &simulation_img2);
+
+    // Control frame rate
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
 }
 
 GLuint Renderer::convertCVmatToGLtexture(cv::Mat* mat)
