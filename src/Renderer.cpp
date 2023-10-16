@@ -243,9 +243,11 @@ void Renderer::update()
     uint32_t width  = this->getParent()->getLedWidth();
     uint32_t height = this->getParent()->getLedHeight();
 
-    // Set background mat
+    // Set background color
     cv::Scalar bg_color = cv::Scalar(room_brightness + 50, room_brightness + 50, room_brightness + 50);
-    this->sim_chip_img_ = cv::Mat(
+
+    // Simulator image before processing
+    cv::Mat sim_chip_img = cv::Mat(
         PIXEL_SIZE * height + PIXEL_PITCH * (height + 1),
         PIXEL_SIZE * width  + PIXEL_PITCH * (width  + 1),
         CV_8UC3,
@@ -264,7 +266,7 @@ void Renderer::update()
             if (!(p_color.r == 0 && p_color.g == 0 && p_color.b == 0))
             {
                 cv::circle(
-                    this->sim_chip_img_,
+                    sim_chip_img,
                     cv::Point(
                         PIXEL_SIZE * (x + 0.5) + PIXEL_PITCH * (x + 1),
                         PIXEL_SIZE * (y + 0.5) + PIXEL_PITCH * (y + 1)
@@ -283,7 +285,7 @@ void Renderer::update()
         }
     }
 
-    // cv::imshow("Simulator - Origin", this->sim_chip_img_);
+    // cv::imshow("Simulator - Origin", sim_chip_img);
     // cv::waitKey(16);
 
     ////////////////////////////////////
@@ -303,11 +305,12 @@ void Renderer::update()
     /////////////////////////////////////////////
     ///// Convert and draw simulation image /////
     /////////////////////////////////////////////
-    double resize_rate = (double)this->sim_width_ / this->sim_chip_img_.cols;
+    this->sim_width_ -= this->sim_width_ % 4;    // Round the width of the simulator image to a multiple of 4
+    double resize_rate = static_cast<double>(this->sim_width_) / sim_chip_img.cols;
 
-    cv::Mat resized_img;
+    cv::Mat resized_img;    // Simulator image after resizing
     cv::resize(
-        this->sim_chip_img_,
+        sim_chip_img,
         resized_img,
         cv::Size(),
         resize_rate,
@@ -347,10 +350,11 @@ void Renderer::update()
         break;
     }
 
-    cv::GaussianBlur(this->sim_chip_img_, this->sim_marble_img_, cv::Size(kernel_size, kernel_size), 0);
+    cv::Mat sim_marble_img;
+    cv::GaussianBlur(sim_chip_img, sim_marble_img, cv::Size(kernel_size, kernel_size), 0);
 
     cv::resize(
-        this->sim_marble_img_,
+        sim_marble_img,
         resized_img,
         cv::Size(),
         resize_rate,

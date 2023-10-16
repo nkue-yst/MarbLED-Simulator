@@ -43,12 +43,6 @@ private:
 
     ImGuiIO* io_;
 
-    /// Chip simulator texture
-    cv::Mat sim_chip_img_;
-
-    // Marble simulator texture
-    cv::Mat sim_marble_img_;
-
 public:
     uint32_t sim_width_;
     uint32_t sim_height_;
