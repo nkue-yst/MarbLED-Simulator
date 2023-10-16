@@ -36,7 +36,6 @@ Renderer::Renderer(Simulator* simulator, std::string dest_ip)
     , sim_width_(MINIMUM_SIM_WIDTH)
     , sim_height_((MINIMUM_WIN_HEIGHT - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MARGIN * 4) / 2)
     , dest_ip_(dest_ip)
-    , need_update_(true)
 {
     // Initialize SDL system
     SDL_Init(SDL_INIT_VIDEO);
@@ -109,7 +108,9 @@ void Renderer::update()
     /////////////////////////
     static uint64_t frame = 0;
     ++frame;
-    //std::cout << "End the frame: " << frame << std::endl;
+    //std::cout << frame << ": End the frame." << std::endl;
+
+    bool win_resizing = false;
 
     // Terminate input and mouse event
     SDL_Event ev;
@@ -176,32 +177,18 @@ void Renderer::update()
         //         }
         //     }
         // }
-    }
 
-    /////////////////////////////////////
-    ///// Check current window size /////
-    /////////////////////////////////////
-    {
-        bool resizing = false;
-
-        int32_t pre_width  = this->win_width_;
-        int32_t pre_height = this->win_height_;
-
-        SDL_SetWindowMinimumSize(this->win_, MINIMUM_WIN_WIDTH, MINIMUM_WIN_HEIGHT);
-        SDL_GetWindowSize(this->win_, &this->win_width_, &this->win_height_);
-
-        if (pre_width != this->win_width_ || pre_height != this->win_height_)
+        if (ev.type == SDL_WINDOWEVENT && ev.window.event == SDL_WINDOWEVENT_RESIZED)
         {
-            // When changed the window size
-            resizing = true;
+            win_resizing = true;
         }
-
-        this->need_update_ = !resizing;
     }
 
-    if (!this->need_update_)
+    SDL_SetWindowMinimumSize(this->win_, MINIMUM_WIN_WIDTH, MINIMUM_WIN_HEIGHT);
+
+    if (win_resizing)
     {
-        //std::cout << "Skip the frame.: " << frame << std::endl;
+        //std::cout << frame << ": Skip the frame." << std::endl;
         return;
     }
 
@@ -218,13 +205,13 @@ void Renderer::update()
     ImGui::Begin("Simulator settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
     // Slider for size of LED matrix
-    static int32_t led_width  = 64;
-    static int32_t led_height = 32;
-    ImGui::TextUnformatted("LED Size");
-    ImGui::SliderInt("Width",  &led_width,  BOARD_WIDTH,  BOARD_WIDTH  * 10);
-    ImGui::SliderInt("Height", &led_height, BOARD_HEIGHT, BOARD_HEIGHT * 10);
+    // static int32_t led_width  = 64;
+    // static int32_t led_height = 32;
+    // ImGui::TextUnformatted("LED Size");
+    // ImGui::SliderInt("Width",  &led_width,  BOARD_WIDTH,  BOARD_WIDTH  * 10);
+    // ImGui::SliderInt("Height", &led_height, BOARD_HEIGHT, BOARD_HEIGHT * 10);
 
-    ImGui::TextUnformatted("");
+    // ImGui::TextUnformatted("");
 
     // Radio button to select marble thickness
     static int32_t marble_thickness = 6;
@@ -296,10 +283,15 @@ void Renderer::update()
         }
     }
 
+    // cv::imshow("Simulator - Origin", this->sim_chip_img_);
+    // cv::waitKey(16);
+
     ////////////////////////////////////
     ///// Draw led-chip simulation /////
     ////////////////////////////////////
-    this->sim_width_  = this->win_width_  - SETTING_PANEL_WIDTH;
+    SDL_GetWindowSize(this->win_, &this->win_width_, &this->win_height_);
+
+    this->sim_width_  = this->win_width_ - SETTING_PANEL_WIDTH;
     this->sim_height_ = this->win_height_ / 2;
 
     ImGui::SetNextWindowPos(ImVec2(0.f, 0.f));
@@ -308,54 +300,69 @@ void Renderer::update()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     ImGui::Begin("MarbLED: Simulator", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
-    // Convert and draw simulation image
-    ImVec2 uv0 = ImVec2(0, 0);
-    ImVec2 uv1 = ImVec2(1, 1);
+    /////////////////////////////////////////////
+    ///// Convert and draw simulation image /////
+    /////////////////////////////////////////////
+    double resize_rate = (double)this->sim_width_ / this->sim_chip_img_.cols;
 
+    cv::Mat resized_img;
     cv::resize(
         this->sim_chip_img_,
-        this->sim_chip_img_,
+        resized_img,
         cv::Size(),
-        (double)this->sim_width_ / this->sim_chip_img_.cols,
-        (double)this->sim_width_ / this->sim_chip_img_.cols
+        resize_rate,
+        resize_rate
     );
-    GLuint simulation_img1 = this->convertCVmatToGLtexture(&this->sim_chip_img_);
-    ImGui::Image((void*)(uintptr_t)simulation_img1, ImVec2(this->sim_chip_img_.cols, this->sim_chip_img_.rows), uv0, uv1);
+
+    // cv::imshow("Simulator - resized", resized_img);
+    // cv::waitKey(16);
+
+    GLuint simulation_img1 = this->convertCVmatToGLtexture(&resized_img);
+    ImGui::Image((void*)(uintptr_t)simulation_img1, ImVec2(resized_img.cols, resized_img.rows));
 
     // End led-chip simulation
     ImGui::End();
-    ImGui::PopStyleVar();
 
     /////////////////////////////////////
     ///// Drawing marble simulation /////
     /////////////////////////////////////
-    //ImGui::SetNextWindowSize(ImVec2(this->win_width_ + IMGUI_MARGIN, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
-    //ImGui::SetNextWindowPos(ImVec2(0.f, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT));
-    //ImGui::Begin("Marble Simulation", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
-//
-    //// Convert and draw simulation image
-    //int32_t kernel_size;
-    //switch (marble_thickness)
-    //{
-    //case 6:
-    //    kernel_size = 37;
-    //    break;
-    //case 9:
-    //    kernel_size = 41;
-    //    break;
-    //case 11:
-    //    kernel_size = 55;
-    //    break;
-    //default:
-    //    break;
-    //}
-//
-    //cv::GaussianBlur(this->sim_chip_img_, this->sim_marble_img_, cv::Size(kernel_size, kernel_size), 0);
-    //GLuint simulation_img2 = this->convertCVmatToGLtexture(&this->sim_marble_img_);
-    //ImGui::Image((void*)(uintptr_t)simulation_img2, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
-    //
-    //// End marble simulation
-    //ImGui::End();
+    ImGui::SetNextWindowPos(ImVec2(0.f, sim_height_));
+    ImGui::SetNextWindowSize(ImVec2(this->sim_width_, this->sim_height_), ImGuiCond_Always);
+    ImGui::Begin("Marble Simulation", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+
+    // Convert and draw simulation image
+    int32_t kernel_size;
+    switch (marble_thickness)
+    {
+    case 6:
+        kernel_size = 37;
+        break;
+    case 9:
+        kernel_size = 41;
+        break;
+    case 11:
+        kernel_size = 55;
+        break;
+    default:
+        break;
+    }
+
+    cv::GaussianBlur(this->sim_chip_img_, this->sim_marble_img_, cv::Size(kernel_size, kernel_size), 0);
+
+    cv::resize(
+        this->sim_marble_img_,
+        resized_img,
+        cv::Size(),
+        resize_rate,
+        resize_rate
+    );
+
+    GLuint simulation_img2 = this->convertCVmatToGLtexture(&resized_img);
+    ImGui::Image((void*)(uintptr_t)simulation_img2, ImVec2(resized_img.cols, resized_img.rows));
+
+    // End marble simulation
+    ImGui::End();
+    ImGui::PopStyleVar();
 
     /////////////////////
     ///// Rendering /////
@@ -368,7 +375,7 @@ void Renderer::update()
     SDL_GL_SwapWindow(this->win_);
 
     glDeleteTextures(1, &simulation_img1);
-    //glDeleteTextures(1, &simulation_img2);
+    glDeleteTextures(1, &simulation_img2);
 
     // Control frame rate
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
@@ -377,6 +384,9 @@ void Renderer::update()
 GLuint Renderer::convertCVmatToGLtexture(cv::Mat* mat)
 {
     GLuint texture_id;
+
+    cv::Mat temp_mat;
+    cv::cvtColor((*mat), temp_mat, cv::COLOR_RGB2BGR);
 
     glGenTextures(1, &texture_id);
     glBindTexture(GL_TEXTURE_2D, texture_id);
@@ -387,11 +397,7 @@ GLuint Renderer::convertCVmatToGLtexture(cv::Mat* mat)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
 
-    cv::cvtColor((*mat), (*mat), cv::COLOR_RGB2BGR);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (*mat).cols, (*mat).rows, 0, GL_RGB, GL_UNSIGNED_BYTE, (*mat).ptr());
-
-    cv::cvtColor((*mat), (*mat), cv::COLOR_BGR2RGB);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, temp_mat.cols, temp_mat.rows, 0, GL_RGB, GL_UNSIGNED_BYTE, temp_mat.ptr());
 
     return texture_id;
 }
