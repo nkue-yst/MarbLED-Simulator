@@ -306,7 +306,12 @@ void Renderer::update()
     ///// Convert and draw simulation image /////
     /////////////////////////////////////////////
     this->sim_width_ -= this->sim_width_ % 4;    // Round the width of the simulator image to a multiple of 4
-    double resize_rate = static_cast<double>(this->sim_width_) / sim_chip_img.cols;
+
+    // Keep the image aspect rate
+    double width_ratio  = static_cast<double>(this->sim_width_) / sim_chip_img.cols;
+    double height_ratio = static_cast<double>(this->sim_height_) / sim_chip_img.rows;
+
+    double resize_rate = std::min(width_ratio, height_ratio);
 
     cv::Mat resized_img;    // Simulator image after resizing
     cv::resize(
