@@ -17,27 +17,33 @@ Simulator::Simulator()
     this->setLedWidth(64);
     this->setLedHeight(32);
 
-    this->color_mat_.resize(this->getLedWidth() * this->getLedHeight());
-
-    for (uint32_t i = 0; i < this->getLedWidth() * this->getLedHeight(); i++)
-            this->color_mat_[i] = Color(0, 0, 0);
-
     printLog("Init Simulator", true);
 }
 
 Simulator::~Simulator()
 {
-    delete this->renderer_;
-    this->renderer_ = nullptr;
+    if (this->renderer_ != nullptr)
+    {
+        delete this->renderer_;
+        this->renderer_ = nullptr;
+    }
 
-    delete this->socket_;
-    this->socket_ = nullptr;
+    if (this->socket_ != nullptr)
+    {
+        delete this->socket_;
+        this->socket_ = nullptr;
+    }
 
     printLog("Destroy Simulator", true);
 }
 
 void Simulator::run(std::string dest_ip)
 {
+    // Initialize color matrix
+    this->color_mat_.resize(this->getLedWidth() * this->getLedHeight());
+    for (uint32_t i = 0; i < this->getLedWidth() * this->getLedHeight(); ++i)
+            this->color_mat_[i] = Color(0, 0, 0);
+
     // Initialize components
     this->socket_ = new Socket(this);
     this->renderer_ = new Renderer(this, dest_ip);

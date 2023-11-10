@@ -282,11 +282,31 @@ void Renderer::update()
                     -1
                 );
             }
+
+            ////////////////////////////////
+            ///// Draw chips for debug /////
+            ////////////////////////////////
+            // cv::circle(
+            //     sim_chip_img,
+            //     cv::Point(
+            //         PIXEL_SIZE * (x + 0.5) + PIXEL_PITCH * (x + 1),
+            //         PIXEL_SIZE * (y + 0.5) + PIXEL_PITCH * (y + 1)
+            //     ),
+            //     static_cast<int32_t>(
+            //         PIXEL_SIZE / 2
+            //     ),
+            //     cv::Scalar(
+            //         255,
+            //         128,
+            //         0
+            //     ),
+            //     -1
+            // );
         }
     }
 
-    // cv::imshow("Simulator - Origin", sim_chip_img);
-    // cv::waitKey(16);
+    cv::imshow("Simulator - Origin", sim_chip_img);
+    cv::waitKey(16);
 
     ////////////////////////////////////
     ///// Draw led-chip simulation /////
