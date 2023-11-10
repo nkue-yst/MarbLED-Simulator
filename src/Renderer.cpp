@@ -15,10 +15,6 @@
 #include "Simulator.hpp"
 #include "Socket.hpp"
 
-#define IMGUI_MARGIN 17
-#define IMGUI_TITLE_BAR_HEIGHT 18
-#define IMGUI_MENU_BAR_HEIGHT 19
-
 #define BOARD_WIDTH  18
 #define BOARD_HEIGHT 18
 
@@ -31,10 +27,12 @@
 #define PIXEL_SIZE  20
 #define PIXEL_PITCH 5
 
+#define OUTPUT_BUFFER_SIZE 1024
+
 Renderer::Renderer(Simulator* simulator, std::string dest_ip)
     : SimComponentBase(simulator)
     , sim_width_(MINIMUM_SIM_WIDTH)
-    , sim_height_((MINIMUM_WIN_HEIGHT - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MARGIN * 4) / 2)
+    , sim_height_(MINIMUM_WIN_HEIGHT / 2)
     , dest_ip_(dest_ip)
 {
     // Initialize SDL system
@@ -116,8 +114,6 @@ void Renderer::update()
     SDL_Event ev;
     while (SDL_PollEvent(&ev))
     {
-        ImGui_ImplSDL2_ProcessEvent(&ev);
-
         // Terminate event
         if (ev.type == SDL_QUIT)
         {
@@ -132,52 +128,44 @@ void Renderer::update()
         ///// Mouse click event /////
         /////////////////////////////
         // When mouse left button is pressed
-        // if (ev.button.button == SDL_BUTTON_LEFT || (ev.motion.state & SDL_BUTTON_LMASK != 0))
-        // {
-        //     UdpTransmitSocket sock(IpEndpointName(this->dest_ip_.c_str(), 9000));
-// 
-        //     char buff[1024];
-        //     osc::OutboundPacketStream p(buff, 1024);
-// 
-        //     // Check window range
-        //     if (IMGUI_MARGIN / 2 < ev.button.x && ev.button.x < IMGUI_MARGIN / 2 + this->pixel_size_ * this->getParent()->getLedWidth())
-        //     {
-        //         int32_t pos_x = (ev.button.x - IMGUI_MARGIN / 2) / this->pixel_size_;
-        //         int32_t pos_y = -1;
-// 
-        //         if (IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT < ev.button.y && ev.button.y < IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight())
-        //         {
-        //             pos_y = (ev.button.y - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MENU_BAR_HEIGHT - IMGUI_MARGIN / 2) / this->pixel_size_;
-        //         }
-        //         else if (IMGUI_MARGIN + IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight() < ev.button.y && ev.button.y < IMGUI_MARGIN + IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * // this->getParent()->getLedHeight() * 2)
-        //         {
-        //             pos_y = (ev.button.y - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MENU_BAR_HEIGHT - IMGUI_MARGIN - IMGUI_MARGIN / 2 - this->pixel_size_ * this->getParent()->getLedHeight()) / this->pixel_size_;
-        //         }
-// 
-        //         if (pos_y != -1)
-        //         {
-        //             if (ev.button.type == SDL_MOUSEBUTTONDOWN || ev.motion.type == SDL_MOUSEMOTION)
-        //             {
-        //                 p << osc::BeginBundleImmediate
-        //                     << osc::BeginMessage("/touch/0/point")
-        //                         << pos_x
-        //                         << pos_y
-        //                     << osc::EndMessage
-        //                 << osc::EndBundle;
-        //                 sock.Send(p.Data(), p.Size());
-        //             }
-        //             else if (ev.button.type == SDL_MOUSEBUTTONUP)
-        //             {
-        //                 p << osc::BeginBundleImmediate
-        //                     << osc::BeginMessage("/touch/0/delete")
-        //                     << osc::EndMessage
-        //                 << osc::EndBundle;
-        //                 sock.Send(p.Data(), p.Size());
-        //             }
-        //         }
-        //     }
-        // }
+        if (ev.button.button == SDL_BUTTON_LEFT || ev.motion.state & SDL_BUTTON_LMASK != 0)
+        {
+            // Check window range
+            if (0 < ev.button.x && ev.button.x < this->sim_width_ && 0 < ev.button.y && ev.button.y < this->sim_height_)
+            {
+                // Convert mouse position to LED position
+                uint32_t led_x = static_cast<uint32_t>(ev.button.x / (this->sim_width_ / this->getParent()->getLedWidth()));
+                uint32_t led_y = static_cast<uint32_t>(ev.button.y / (this->sim_height_ / this->getParent()->getLedHeight()));
 
+                std::cout << "Mouse click: (" << led_x << ", " << led_y << ")" << std::endl;
+
+                // Send OSC message
+                UdpTransmitSocket sock(IpEndpointName(this->dest_ip_.c_str(), 9000));
+                char buffer[OUTPUT_BUFFER_SIZE];
+                osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
+
+                if (ev.button.type == SDL_MOUSEBUTTONDOWN || ev.motion.type == SDL_MOUSEMOTION)
+                {
+                    p << osc::BeginBundleImmediate
+                        << osc::BeginMessage("/touch/0/point")
+                            << static_cast<int32_t>(led_x)
+                            << static_cast<int32_t>(led_y)
+                        << osc::EndMessage
+                    << osc::EndBundle;
+                    sock.Send(p.Data(), p.Size());
+                }
+                else if (ev.button.type == SDL_MOUSEBUTTONUP)
+                {
+                    p << osc::BeginBundleImmediate
+                        << osc::BeginMessage("/touch/0/delete")
+                        << osc::EndMessage
+                    << osc::EndBundle;
+                    sock.Send(p.Data(), p.Size());
+                }
+            }
+        }
+
+        // When window is resized
         if (ev.type == SDL_WINDOWEVENT && ev.window.event == SDL_WINDOWEVENT_RESIZED)
         {
             win_resizing = true;
@@ -305,8 +293,8 @@ void Renderer::update()
         }
     }
 
-    cv::imshow("Simulator - Origin", sim_chip_img);
-    cv::waitKey(16);
+    // cv::imshow("Simulator - Origin", sim_chip_img);
+    // cv::waitKey(16);
 
     ////////////////////////////////////
     ///// Draw led-chip simulation /////
