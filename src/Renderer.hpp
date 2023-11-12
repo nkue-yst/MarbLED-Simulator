@@ -4,11 +4,10 @@
 #include <string>
 
 #include "SDL.h"
-#include "SDL_opengl.h"
 
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
-#include "imgui_impl_opengl3.h"
+#include "imgui_impl_sdlrenderer2.h"
 
 #include <opencv2/opencv.hpp>
 
@@ -23,7 +22,7 @@ public:
     void update();
 
 private:
-    GLuint convertCVmatToGLtexture(cv::Mat* mat);
+    SDL_Texture* convertCV_matToSDL_Texture(cv::Mat& mat);
 
     /// Chip simulator window name
     std::string sim_chip_window_ = "Chip Simulator";
@@ -36,7 +35,6 @@ private:
     int32_t win_height_;
 
     SDL_Window* win_;
-    SDL_GLContext gl_context_;
     SDL_Renderer* renderer_;
     
     ImGuiContext* imgui_context_;
@@ -44,8 +42,8 @@ private:
     ImGuiIO* io_;
 
 public:
-    uint32_t sim_width_;
-    uint32_t sim_height_;
+    int32_t sim_width_;
+    int32_t sim_height_;
 
     /// Destination ip address for mouse event
     std::string dest_ip_;

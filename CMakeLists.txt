@@ -25,9 +25,6 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIR})
 
-### Setup OpenGL ###
-find_package(OpenGL REQUIRED)
-
 ### imgui ###
 set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/thirdparty/imgui)
 include_directories(${IMGUI_DIR} ${IMGUI_DIR}/backends)
@@ -38,7 +35,7 @@ set(IMGUI_SOURCES
 	${IMGUI_DIR}/imgui_tables.cpp
 	${IMGUI_DIR}/imgui_widgets.cpp
 	${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp
-	${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+	${IMGUI_DIR}/backends/imgui_impl_sdlrenderer2.cpp
 )
 
 ### Setup ZeroMQ ###
@@ -86,6 +83,6 @@ add_library(oscpack
 ### Main app ###
 file(GLOB TARGET_SRC src/*.hpp src/*.cpp)
 add_executable(${PROJECT_NAME} ${TARGET_SRC} ${IMGUI_SOURCES})
-target_link_libraries(${PROJECT_NAME} cppzmq oscpack OpenGL::GL SDL2::Core SDL2::Main ${OpenCV_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} cppzmq oscpack SDL2::Core SDL2::Main ${OpenCV_LIBRARIES})
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
 
