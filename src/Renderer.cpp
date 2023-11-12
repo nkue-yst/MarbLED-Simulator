@@ -120,37 +120,51 @@ void Renderer::update()
         // When mouse left button is pressed
         if (ev.button.button == SDL_BUTTON_LEFT || ev.motion.state & SDL_BUTTON_LMASK != 0)
         {
+            // Get mouse position
+            int32_t mouse_x = ev.button.x;
+            int32_t mouse_y = ev.button.y;
+
             // Check simulator window range
-            if (0 <= ev.button.x && ev.button.x <= this->sim_width_ && 0 <= ev.button.y && ev.button.y <= this->sim_height_)
+            if ((0 <= mouse_x && mouse_x <= this->sim_width_) &&
+                    ((0 < mouse_y && mouse_y < this->sim_height_) || (this->win_height_ / 2 < mouse_y && mouse_y < this->win_height_ / 2 + this->sim_height_)))
             {
-                // Convert mouse position to LED position
-                uint32_t led_x = static_cast<uint32_t>(ev.button.x / resize_rate / (PIXEL_SIZE + PIXEL_PITCH));
-                uint32_t led_y = static_cast<uint32_t>(ev.button.y / resize_rate / (PIXEL_SIZE + PIXEL_PITCH));
-
-                // std::cout << "Mouse click: (" << led_x << ", " << led_y << ")" << std::endl;
-
-                // Send OSC message
-                UdpTransmitSocket sock(IpEndpointName(this->dest_ip_.c_str(), 9000));
-                char buffer[OUTPUT_BUFFER_SIZE];
-                osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
-
-                if (ev.button.type == SDL_MOUSEBUTTONDOWN || ev.motion.type == SDL_MOUSEMOTION)
+                // Convert mouse position y-axis
+                if (0 <= mouse_x && mouse_x <= this->sim_width_)
                 {
-                    p << osc::BeginBundleImmediate
-                        << osc::BeginMessage("/touch/0/point")
-                            << static_cast<int32_t>(led_x)
-                            << static_cast<int32_t>(led_y)
-                        << osc::EndMessage
-                    << osc::EndBundle;
-                    sock.Send(p.Data(), p.Size());
-                }
-                else if (ev.button.type == SDL_MOUSEBUTTONUP)
-                {
-                    p << osc::BeginBundleImmediate
-                        << osc::BeginMessage("/touch/0/delete")
-                        << osc::EndMessage
-                    << osc::EndBundle;
-                    sock.Send(p.Data(), p.Size());
+                    if (this->win_height_ / 2 < mouse_y && mouse_y <= this->win_height_)
+                    {
+                        mouse_y -= this->win_height_ / 2;
+                    }
+
+                    // Convert mouse position to LED position
+                    uint32_t led_x = static_cast<uint32_t>(mouse_x / resize_rate / (PIXEL_SIZE + PIXEL_PITCH));
+                    uint32_t led_y = static_cast<uint32_t>(mouse_y / resize_rate / (PIXEL_SIZE + PIXEL_PITCH));
+
+                    // std::cout << "Mouse click: (" << led_x << ", " << led_y << ")" << std::endl;
+
+                    // Send OSC message
+                    UdpTransmitSocket sock(IpEndpointName(this->dest_ip_.c_str(), 9000));
+                    char buffer[OUTPUT_BUFFER_SIZE];
+                    osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
+
+                    if (ev.button.type == SDL_MOUSEBUTTONDOWN || ev.motion.type == SDL_MOUSEMOTION)
+                    {
+                        p << osc::BeginBundleImmediate
+                            << osc::BeginMessage("/touch/0/point")
+                                << static_cast<int32_t>(led_x)
+                                << static_cast<int32_t>(led_y)
+                            << osc::EndMessage
+                        << osc::EndBundle;
+                        sock.Send(p.Data(), p.Size());
+                    }
+                    else if (ev.button.type == SDL_MOUSEBUTTONUP)
+                    {
+                        p << osc::BeginBundleImmediate
+                            << osc::BeginMessage("/touch/0/delete")
+                            << osc::EndMessage
+                        << osc::EndBundle;
+                        sock.Send(p.Data(), p.Size());
+                    }
                 }
             }
         }
