@@ -104,6 +104,8 @@ void Renderer::update()
     SDL_Event ev;
     while (SDL_PollEvent(&ev))
     {
+        ImGui_ImplSDL2_ProcessEvent(&ev);
+
         // Terminate event
         if (ev.type == SDL_QUIT)
         {
@@ -386,6 +388,10 @@ void Renderer::update()
 
     // Re-set simulator image size
     SDL_QueryTexture(simulation_img1, NULL, NULL, &this->sim_width_, &this->sim_height_);
+
+    // Destroy texture  after rendering
+    SDL_DestroyTexture(simulation_img1);
+    SDL_DestroyTexture(simulation_img2);
 
     // Control frame rate
     std::this_thread::sleep_for(std::chrono::milliseconds(16));
