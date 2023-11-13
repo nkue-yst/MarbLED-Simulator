@@ -15,7 +15,7 @@
 #include "Simulator.hpp"
 #include "Socket.hpp"
 
-#if SDL_BYTEORDER == SDL_BIG_ENDIAN
+#if SDL_BYTEORDER == SDL_BIG_ENDIAN || defined(__APPLE__)
 #define SDL_RMASK (0xff000000)
 #define SDL_GMASK (0x00ff0000)
 #define SDL_BMASK (0x0000ff00)
