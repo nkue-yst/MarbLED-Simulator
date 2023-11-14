@@ -414,9 +414,9 @@ SDL_Texture* Renderer::convertCV_matToSDL_Texture(cv::Mat& mat)
         mat.rows,
         mat.channels() * 8,
         mat.step,
-        SDL_BMASK,
-        SDL_GMASK,
         SDL_RMASK,
+        SDL_GMASK,
+        SDL_BMASK,
         0
     );
 

@@ -38,15 +38,14 @@ void Socket::run(std::string dest_ip)
     std::vector<zmq::message_t> msgs;
     while (!this->getParent()->getQuitFlag())
     {
-
         // パネルの縦横の枚数分のデータを受信する
-        uint32_t i = 0;
+        uint32_t id = 0;
         for (int y = 0; y < h; ++y)
         {
             for (int x = 0; x < w; ++x)
             {
                 char filter[256] = {};
-                std::sprintf(filter, "BRD_COLOR %d", i++);
+                std::sprintf(filter, "BRD_COLOR %d", id++);
                 sub.setsockopt(ZMQ_SUBSCRIBE, filter, std::strlen(filter));
 
                 // Debug print for filter
@@ -59,6 +58,40 @@ void Socket::run(std::string dest_ip)
                 // std::cout << msgs[1].to_string() << std::endl;
                 // std::cout << msgs[2].to_string() << std::endl;
                 // std::cout << msgs[3].to_string() << std::endl;
+
+                // 受信したデータのサイズを計算
+                uint32_t array_size = msgs.at(1).size() / sizeof(uint8_t);
+
+                ///////////////////////////////////////////////////////////////////
+                ///// 受信したデータを "this->getParent()->color_mat_" に格納 /////
+                ///////////////////////////////////////////////////////////////////
+                std::vector<Color> colors;
+                colors.resize(array_size);
+
+                for (int j = 0; j < array_size; ++j)
+                {
+                    colors.at(j).r = msgs.at(1).data<uint8_t>()[j];
+                    colors.at(j).g = msgs.at(2).data<uint8_t>()[j];
+                    colors.at(j).b = msgs.at(3).data<uint8_t>()[j];
+
+                    // Debug print for received data
+                    std::cout <<
+                        " ID: " << std::setw(3) << j <<
+                        "  R: " << std::setw(3) << (int)colors.at(j).r <<
+                        "  G: " << std::setw(3) << (int)colors.at(j).g <<
+                        "  B: " << std::setw(3) << (int)colors.at(j).b
+                    << std::endl;
+                }
+
+                for (int j = 0; j < array_size; ++j)
+                {
+                    uint32_t pixel_index = (y * PANEL_HEIGHT + j / PANEL_WIDTH) * this->getParent()->getLedWidth() + (x * PANEL_WIDTH + j % PANEL_WIDTH);
+
+                    // Debug print for updated pixel coordinate
+                    // std::cout << pixel_index << std::endl;
+
+                    this->getParent()->color_mat_.at(pixel_index) = colors.at(j);
+                }
             }
         }
     }
