@@ -30,8 +30,6 @@ void Socket::run(std::string dest_ip)
 
     sub.connect(dest);
 
-    sub.setsockopt(ZMQ_SUBSCRIBE, "color");
-
     zmq::message_t buf;
     while (!this->getParent()->getQuitFlag())
     {
