@@ -15,15 +15,9 @@
 #include "Simulator.hpp"
 #include "Socket.hpp"
 
-#ifdef __APPLE__
-    #define SDL_RMASK (0x00ff0000)
-    #define SDL_GMASK (0x0000ff00)
-    #define SDL_BMASK (0x000000ff)
-#else
-    #define SDL_RMASK (0x000000ff)
-    #define SDL_GMASK (0x0000ff00)
-    #define SDL_BMASK (0x00ff0000)
-#endif
+#define SDL_RMASK (0x000000ff)
+#define SDL_GMASK (0x0000ff00)
+#define SDL_BMASK (0x00ff0000)
 
 #define DEBUG std::cout<<"DEBUG: "<<__FILE__<<":"<<__LINE__<<std::endl
 
