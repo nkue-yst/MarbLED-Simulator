@@ -13,74 +13,63 @@
 #include "Color.hpp"
 #include "Common.hpp"
 #include "Simulator.hpp"
+#include "Socket.hpp"
 
-#define IMGUI_MARGIN 17
-#define IMGUI_TITLE_BAR_HEIGHT 18
-#define IMGUI_MENU_BAR_HEIGHT 19
+#define SDL_RMASK (0x000000ff)
+#define SDL_GMASK (0x0000ff00)
+#define SDL_BMASK (0x00ff0000)
+
+#define DEBUG std::cout<<"DEBUG: "<<__FILE__<<":"<<__LINE__<<std::endl
 
 #define SETTING_PANEL_WIDTH  250
-#define SETTING_PANEL_HEIGHT 400
+
+#define MINIMUM_SIM_WIDTH 300
+#define MINIMUM_WIN_WIDTH (MINIMUM_SIM_WIDTH + SETTING_PANEL_WIDTH)
+#define MINIMUM_WIN_HEIGHT 400
+
+#define PIXEL_SIZE  20
+#define PIXEL_PITCH 5
+
+#define OUTPUT_BUFFER_SIZE 1024
 
 Renderer::Renderer(Simulator* simulator, std::string dest_ip)
     : SimComponentBase(simulator)
+    , sim_width_(MINIMUM_SIM_WIDTH)
+    , sim_height_(MINIMUM_WIN_HEIGHT / 2)
     , dest_ip_(dest_ip)
 {
     // Initialize SDL system
     SDL_Init(SDL_INIT_VIDEO);
 
-    // Initialize OpenGL
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
-    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-
-    // Display size settings
-    SDL_Rect r;
-    SDL_GetDisplayBounds(0, &r);
-    uint32_t display_width = r.w;
-    uint32_t display_height = r.h;
-
-    std::cout << "w: " << r.w << ", h: " << r.h << std::endl;
-
-    // Pixel size settings
-    this->pixel_size_ = std::min(display_width / this->getParent()->getLedWidth(), display_height / this->getParent()->getLedHeight()) / 2;
-
     // Create window
-    SDL_WindowFlags win_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI);
-    this->win_width_ = this->pixel_size_ * this->getParent()->getLedWidth();
-    this->win_height_ = this->pixel_size_ * this->getParent()->getLedHeight() * 2;
+    SDL_WindowFlags win_flags = (SDL_WindowFlags)(SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    this->win_width_  = MINIMUM_WIN_WIDTH;
+    this->win_height_ = MINIMUM_WIN_HEIGHT;
 
     this->win_ = SDL_CreateWindow(
-        "MarbLED SDK",
+        "MarbLED Simulator",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        this->win_width_ + IMGUI_MARGIN + SETTING_PANEL_WIDTH,
-        this->win_height_ + IMGUI_MARGIN * 2 + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT,
+        this->win_width_,
+        this->win_height_,
         win_flags
     );
 
     // Create renderer
-    this->gl_context_ = SDL_GL_CreateContext(this->win_);
-    SDL_GL_MakeCurrent(this->win_, this->gl_context_);
-    SDL_GL_SetSwapInterval(1);
     this->renderer_ = SDL_CreateRenderer(this->win_, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
 
     // Setup ImGui
-    const char* glsl_version = "#version 130";
     IMGUI_CHECKVERSION();
     this->imgui_context_ = ImGui::CreateContext();
     
-    ImGui_ImplSDL2_InitForOpenGL(this->win_, this->gl_context_);
-    ImGui_ImplOpenGL3_Init(glsl_version);
+    ImGui_ImplSDLRenderer2_Init(this->renderer_);
+    ImGui_ImplSDL2_InitForSDLRenderer(this->win_, this->renderer_);
+    
     ImGui::StyleColorsDark();
 
     this->io_ = &ImGui::GetIO();
     this->io_->Fonts->Build();
-
+    
     this->update();
 
     printLog("Init Renderer", true);
@@ -91,7 +80,7 @@ Renderer::~Renderer()
     SDL_DestroyRenderer(this->renderer_);
     SDL_DestroyWindow(this->win_);
 
-    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDLRenderer2_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
 
@@ -102,6 +91,16 @@ Renderer::~Renderer()
 
 void Renderer::update()
 {
+    /////////////////////////
+    ///// Frame counter /////
+    /////////////////////////
+    static uint64_t frame = 0;
+    ++frame;
+    //std::cout << frame << ": End the frame." << std::endl;
+
+    bool win_resizing = false;
+    static double resize_rate = 1.0;
+
     // Terminate input and mouse event
     SDL_Event ev;
     while (SDL_PollEvent(&ev))
@@ -122,36 +121,41 @@ void Renderer::update()
         ///// Mouse click event /////
         /////////////////////////////
         // When mouse left button is pressed
-        if (ev.button.button == SDL_BUTTON_LEFT || (ev.motion.state & SDL_BUTTON_LMASK != 0))
+        if (ev.button.button == SDL_BUTTON_LEFT || ev.motion.state & SDL_BUTTON_LMASK != 0)
         {
-            UdpTransmitSocket sock(IpEndpointName(this->dest_ip_.c_str(), 9000));
+            // Get mouse position
+            int32_t mouse_x = ev.button.x;
+            int32_t mouse_y = ev.button.y;
 
-            char buff[1024];
-            osc::OutboundPacketStream p(buff, 1024);
-
-            // Check window range
-            if (IMGUI_MARGIN / 2 < ev.button.x && ev.button.x < IMGUI_MARGIN / 2 + this->pixel_size_ * this->getParent()->getLedWidth())
+            // Check simulator window range
+            if ((0 <= mouse_x && mouse_x <= this->sim_width_) &&
+                    ((0 < mouse_y && mouse_y < this->sim_height_) || (this->win_height_ / 2 < mouse_y && mouse_y < this->win_height_ / 2 + this->sim_height_)))
             {
-                int32_t pos_x = (ev.button.x - IMGUI_MARGIN / 2) / this->pixel_size_;
-                int32_t pos_y = -1;
+                // Convert mouse position y-axis
+                if (0 <= mouse_x && mouse_x <= this->sim_width_)
+                {
+                    if (this->win_height_ / 2 < mouse_y && mouse_y <= this->win_height_)
+                    {
+                        mouse_y -= this->win_height_ / 2;
+                    }
 
-                if (IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT < ev.button.y && ev.button.y < IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight())
-                {
-                    pos_y = (ev.button.y - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MENU_BAR_HEIGHT - IMGUI_MARGIN / 2) / this->pixel_size_;
-                }
-                else if (IMGUI_MARGIN + IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight() < ev.button.y && ev.button.y < IMGUI_MARGIN + IMGUI_MARGIN / 2 + IMGUI_MENU_BAR_HEIGHT + IMGUI_TITLE_BAR_HEIGHT + this->pixel_size_ * this->getParent()->getLedHeight() * 2)
-                {
-                    pos_y = (ev.button.y - IMGUI_TITLE_BAR_HEIGHT - IMGUI_MENU_BAR_HEIGHT - IMGUI_MARGIN - IMGUI_MARGIN / 2 - this->pixel_size_ * this->getParent()->getLedHeight()) / this->pixel_size_;
-                }
+                    // Convert mouse position to LED position
+                    uint32_t led_x = static_cast<uint32_t>(mouse_x / resize_rate / (PIXEL_SIZE + PIXEL_PITCH));
+                    uint32_t led_y = static_cast<uint32_t>(mouse_y / resize_rate / (PIXEL_SIZE + PIXEL_PITCH));
 
-                if (pos_y != -1)
-                {
+                    // std::cout << "Mouse click: (" << led_x << ", " << led_y << ")" << std::endl;
+
+                    // Send OSC message
+                    UdpTransmitSocket sock(IpEndpointName(this->dest_ip_.c_str(), 9000));
+                    char buffer[OUTPUT_BUFFER_SIZE];
+                    osc::OutboundPacketStream p(buffer, OUTPUT_BUFFER_SIZE);
+
                     if (ev.button.type == SDL_MOUSEBUTTONDOWN || ev.motion.type == SDL_MOUSEMOTION)
                     {
                         p << osc::BeginBundleImmediate
                             << osc::BeginMessage("/touch/0/point")
-                                << pos_x
-                                << pos_y
+                                << static_cast<int32_t>(led_x)
+                                << static_cast<int32_t>(led_y)
                             << osc::EndMessage
                         << osc::EndBundle;
                         sock.Send(p.Data(), p.Size());
@@ -167,18 +171,32 @@ void Renderer::update()
                 }
             }
         }
+
+        // When window is resized
+        if (ev.type == SDL_WINDOWEVENT && ev.window.event == SDL_WINDOWEVENT_RESIZED)
+        {
+            win_resizing = true;
+        }
+    }
+
+    SDL_SetWindowMinimumSize(this->win_, MINIMUM_WIN_WIDTH, MINIMUM_WIN_HEIGHT);
+
+    if (win_resizing)
+    {
+        //std::cout << frame << ": Skip the frame." << std::endl;
+        return;
     }
 
     // Start new ImGui frame
-    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDLRenderer2_NewFrame();
     ImGui_ImplSDL2_NewFrame();
     ImGui::NewFrame();
 
     //////////////////////////////
     ///// Draw setting panel /////
     //////////////////////////////
-    ImGui::SetNextWindowSize(ImVec2(SETTING_PANEL_WIDTH, this->win_height_ + IMGUI_MARGIN * 2 + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2(IMGUI_MARGIN + this->pixel_size_ * this->getParent()->getLedWidth(), 0.f));
+    ImGui::SetNextWindowPos(ImVec2(this->win_width_ - SETTING_PANEL_WIDTH, 0.f));
+    ImGui::SetNextWindowSize(ImVec2(SETTING_PANEL_WIDTH, this->win_height_), ImGuiCond_Always);
     ImGui::Begin("Simulator settings", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
     // Radio button to select marble thickness
@@ -208,35 +226,40 @@ void Renderer::update()
     ///////////////////////////////////
     ///// Create simulation image /////
     ///////////////////////////////////
-    // Set background mat
+    uint32_t width  = this->getParent()->getLedWidth();
+    uint32_t height = this->getParent()->getLedHeight();
+
+    // Set background color
     cv::Scalar bg_color = cv::Scalar(room_brightness + 50, room_brightness + 50, room_brightness + 50);
-    this->sim_chip_img_ = cv::Mat(
-        this->pixel_size_ * this->getParent()->getLedHeight(),
-        this->pixel_size_ * this->getParent()->getLedWidth(),
+
+    // Simulator image before processing
+    cv::Mat sim_chip_img = cv::Mat(
+        PIXEL_SIZE * height + PIXEL_PITCH * (height + 1),
+        PIXEL_SIZE * width  + PIXEL_PITCH * (width  + 1),
         CV_8UC3,
         bg_color
     );
 
     // Draw chips
     std::vector<Color> color_mat = this->getParent()->getColors();
-    uint32_t width = this->getParent()->getLedWidth();
-    uint32_t height = this->getParent()->getLedHeight();
 
-    for (uint32_t y = 0; y < height; y++)
+    for (uint32_t y = 0; y < height; ++y)
     {
-        for (uint32_t x = 0; x < width; x++)
+        for (uint32_t x = 0; x < width; ++x)
         {
             Color p_color = color_mat[x + width * y];
 
             if (!(p_color.r == 0 && p_color.g == 0 && p_color.b == 0))
             {
                 cv::circle(
-                    this->sim_chip_img_,
+                    sim_chip_img,
                     cv::Point(
-                        this->pixel_size_ * x + this->pixel_size_ / 2,
-                        this->pixel_size_ * y + this->pixel_size_ / 2
+                        PIXEL_SIZE * (x + 0.5) + PIXEL_PITCH * (x + 1),
+                        PIXEL_SIZE * (y + 0.5) + PIXEL_PITCH * (y + 1)
                     ),
-                    static_cast<int32_t>(this->pixel_size_ / 2),
+                    static_cast<int32_t>(
+                        PIXEL_SIZE / 2
+                    ),
                     cv::Scalar(
                         p_color.r,
                         p_color.g,
@@ -245,69 +268,79 @@ void Renderer::update()
                     -1
                 );
             }
+
+            ////////////////////////////////
+            ///// Draw chips for debug /////
+            ////////////////////////////////
+            // cv::circle(
+            //     sim_chip_img,
+            //     cv::Point(
+            //         PIXEL_SIZE * (x + 0.5) + PIXEL_PITCH * (x + 1),
+            //         PIXEL_SIZE * (y + 0.5) + PIXEL_PITCH * (y + 1)
+            //     ),
+            //     static_cast<int32_t>(
+            //         PIXEL_SIZE / 2
+            //     ),
+            //     cv::Scalar(
+            //         255,
+            //         128,
+            //         0
+            //     ),
+            //     -1
+            // );
         }
     }
+
+    // cv::imshow("Simulator - Origin", sim_chip_img);
+    // cv::waitKey(16);
 
     ////////////////////////////////////
     ///// Draw led-chip simulation /////
     ////////////////////////////////////
-    ImGui::SetNextWindowSize(ImVec2(this->win_width_ + IMGUI_MARGIN, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
+    SDL_GetWindowSize(this->win_, &this->win_width_, &this->win_height_);
+
+    this->sim_width_  = this->win_width_ - SETTING_PANEL_WIDTH;
+    this->sim_height_ = this->win_height_ / 2;
+
     ImGui::SetNextWindowPos(ImVec2(0.f, 0.f));
-    ImGui::Begin("MarbLED: Simulator", nullptr, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
+    ImGui::SetNextWindowSize(ImVec2(this->sim_width_, this->sim_height_), ImGuiCond_Always);
 
-    /////////////////////////
-    ///// Draw menu bar /////
-    /////////////////////////
-    if (ImGui::BeginMenuBar())
-    {
-        if (ImGui::BeginMenu("File"))
-        {
-            if (ImGui::MenuItem("Save"))
-            {
-                auto format_date = [](const std::chrono::system_clock::time_point& tp, const std::string& format)
-                {
-                    std::time_t t = std::chrono::system_clock::to_time_t(tp);
-                    std::tm tm = *std::localtime(&t);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::Begin("MarbLED: Simulator", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar);
 
-                    std::ostringstream oss;
-                    oss << std::put_time(&tm, format.c_str());
+    /////////////////////////////////////////////
+    ///// Convert and draw simulation image /////
+    /////////////////////////////////////////////
 
-                    return oss.str();
-                };
+    // Keep the image aspect rate
+    double width_ratio  = static_cast<double>(this->sim_width_) / sim_chip_img.cols;
+    double height_ratio = static_cast<double>(this->sim_height_) / sim_chip_img.rows;
 
-                auto now = std::chrono::system_clock::now();
-                std::string formatted_date = format_date(now, "%Y-%m-%d-%H-%M-%S");
+    resize_rate = std::min(width_ratio, height_ratio);
 
-                cv::imwrite("Chip_" + formatted_date + ".png", this->sim_chip_img_);
-                cv::imwrite("Marble_" + formatted_date + ".png", this->sim_marble_img_);
-            }
+    cv::Mat resized_img;    // Simulator image after resizing
+    cv::resize(
+        sim_chip_img,
+        resized_img,
+        cv::Size(),
+        resize_rate,
+        resize_rate
+    );
 
-            if (ImGui::MenuItem("Exit"))
-            {
-                this->getParent()->setQuitFlag(true);
-            }
+    // cv::imshow("Simulator - resized", resized_img);
+    // cv::waitKey(16);
 
-            ImGui::EndMenu();
-        }
-
-        ImGui::EndMenuBar();
-    }
-
-    // Convert and draw simulation image
-    ImVec2 uv0 = ImVec2(0, 0);
-    ImVec2 uv1 = ImVec2(1, 1);
-
-    GLuint simulation_img1 = this->convertCVmatToGLtexture(&this->sim_chip_img_);
-    ImGui::Image((void*)(uintptr_t)simulation_img1, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
+    SDL_Texture* simulation_img1 = this->convertCV_matToSDL_Texture(resized_img);
+    ImGui::Image(simulation_img1, ImVec2(resized_img.cols, resized_img.rows));
 
     // End led-chip simulation
     ImGui::End();
-    
+
     /////////////////////////////////////
     ///// Drawing marble simulation /////
     /////////////////////////////////////
-    ImGui::SetNextWindowSize(ImVec2(this->win_width_ + IMGUI_MARGIN, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_MENU_BAR_HEIGHT), ImGuiCond_Always);
-    ImGui::SetNextWindowPos(ImVec2(0.f, this->win_height_ / 2 + IMGUI_MARGIN + IMGUI_TITLE_BAR_HEIGHT + IMGUI_MENU_BAR_HEIGHT));
+    ImGui::SetNextWindowPos(ImVec2(0.f, sim_height_));
+    ImGui::SetNextWindowSize(ImVec2(this->sim_width_, this->sim_height_), ImGuiCond_Always);
     ImGui::Begin("Marble Simulation", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
 
     // Convert and draw simulation image
@@ -327,45 +360,65 @@ void Renderer::update()
         break;
     }
 
-    cv::GaussianBlur(this->sim_chip_img_, this->sim_marble_img_, cv::Size(kernel_size, kernel_size), 0);
-    GLuint simulation_img2 = this->convertCVmatToGLtexture(&this->sim_marble_img_);
-    ImGui::Image((void*)(uintptr_t)simulation_img2, ImVec2(this->win_width_, this->win_height_ / 2), uv0, uv1);
+    cv::Mat sim_marble_img;
+    cv::GaussianBlur(sim_chip_img, sim_marble_img, cv::Size(kernel_size, kernel_size), 0);
+
+    cv::resize(
+        sim_marble_img,
+        resized_img,
+        cv::Size(),
+        resize_rate,
+        resize_rate
+    );
+
+    SDL_Texture* simulation_img2 = this->convertCV_matToSDL_Texture(resized_img);
+    ImGui::Image(simulation_img2, ImVec2(resized_img.cols, resized_img.rows));
 
     // End marble simulation
     ImGui::End();
+    ImGui::PopStyleVar();
 
-    /////////////////
-    /// Rendering ///
-    /////////////////
+    /////////////////////
+    ///// Rendering /////
+    /////////////////////
     ImGui::Render();
 
-    glViewport(0, 0, (int)this->io_->DisplaySize.x, (int)this->io_->DisplaySize.y);
-    glClear(GL_COLOR_BUFFER_BIT);
-    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-    SDL_GL_SwapWindow(this->win_);
+    SDL_RenderClear(this->renderer_);
+    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData());
+    SDL_RenderPresent(this->renderer_);
 
-    glDeleteTextures(1, &simulation_img1);
-    glDeleteTextures(1, &simulation_img2);
+    // Re-set simulator image size
+    SDL_QueryTexture(simulation_img1, NULL, NULL, &this->sim_width_, &this->sim_height_);
+
+    // Destroy texture  after rendering
+    SDL_DestroyTexture(simulation_img1);
+    SDL_DestroyTexture(simulation_img2);
+
+    // Control frame rate
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
 }
 
-GLuint Renderer::convertCVmatToGLtexture(cv::Mat* mat)
+SDL_Texture* Renderer::convertCV_matToSDL_Texture(cv::Mat& mat)
 {
-    GLuint texture_id;
+    // Create a new surface from the cv::Mat
+    // Reverse the order of the masks for BGR to RGB conversion
+    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(
+        (void*)mat.data,
+        mat.cols,
+        mat.rows,
+        mat.channels() * 8,
+        mat.step,
+        SDL_RMASK,
+        SDL_GMASK,
+        SDL_BMASK,
+        0
+    );
 
-    glGenTextures(1, &texture_id);
-    glBindTexture(GL_TEXTURE_2D, texture_id);
+    // Create a new texture from the surface
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(this->renderer_, surface);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // Free the surface
+    SDL_FreeSurface(surface);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-
-    cv::cvtColor((*mat), (*mat), cv::COLOR_RGB2BGR);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, (*mat).cols, (*mat).rows, 0, GL_RGB, GL_UNSIGNED_BYTE, (*mat).ptr());
-
-    cv::cvtColor((*mat), (*mat), cv::COLOR_BGR2RGB);
-
-    return texture_id;
+    return texture;
 }
