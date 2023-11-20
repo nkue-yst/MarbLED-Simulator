@@ -27,7 +27,7 @@ int main(int argc, char** argv)
         {
             if (i + 1 < argc)
             {
-                if (std::stoi(argv[++i]) % PANEL_WIDTH != 0)
+                if (std::stoi(argv[i + 1]) % PANEL_WIDTH != 0)
                 {
                     std::cout << "Error: -W option requires a multiple of " << PANEL_WIDTH << "." << std::endl;
                     continue;
@@ -47,7 +47,7 @@ int main(int argc, char** argv)
         {
             if (i + 1 < argc)
             {
-                if (std::stoi(argv[++i]) % PANEL_HEIGHT != 0)
+                if (std::stoi(argv[i + 1]) % PANEL_HEIGHT != 0)
                 {
                     std::cout << "Error: -H option requires a multiple of " << PANEL_HEIGHT << "." << std::endl;
                     continue;
