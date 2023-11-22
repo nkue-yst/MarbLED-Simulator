@@ -15,6 +15,10 @@
 #include "Simulator.hpp"
 #include "Socket.hpp"
 
+#define SDL_RMASK (0x000000ff)
+#define SDL_GMASK (0x0000ff00)
+#define SDL_BMASK (0x00ff0000)
+
 #define DEBUG std::cout<<"DEBUG: "<<__FILE__<<":"<<__LINE__<<std::endl
 
 #define BOARD_WIDTH  18
@@ -406,9 +410,9 @@ SDL_Texture* Renderer::convertCV_matToSDL_Texture(cv::Mat& mat)
         mat.rows,
         mat.channels() * 8,
         mat.step,
-        0xff0000,
-        0x00ff00,
-        0x0000ff,
+        SDL_RMASK,
+        SDL_GMASK,
+        SDL_BMASK,
         0
     );
 
