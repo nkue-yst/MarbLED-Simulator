@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 
 ### Setup main project ###
-set(PROJECT_NAME MatrixLED-Simulator)
+set(PROJECT_NAME MarbLED-Simulator)
 project(${PROJECT_NAME})
 
 if(NOT DEFINED CMAKE_SUPPRESS_DEVELOPER_WARNINGS)

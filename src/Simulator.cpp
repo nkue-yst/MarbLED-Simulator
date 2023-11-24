@@ -10,12 +10,15 @@
 #include "Renderer.hpp"
 #include "Socket.hpp"
 
+#define DEFAULT_WIDTH  (PANEL_WIDTH  * 3)
+#define DEFAULT_HEIGHT (PANEL_HEIGHT * 1)
+
 Simulator::Simulator()
     :quit_flag_(false)
 {
     // Initialize Matrix LED info
-    this->setLedWidth(64);
-    this->setLedHeight(32);
+    this->setLedWidth(DEFAULT_WIDTH);
+    this->setLedHeight(DEFAULT_HEIGHT);
 
     printLog("Init Simulator", true);
 }

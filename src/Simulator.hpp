@@ -7,6 +7,9 @@
 
 #include "Color.hpp"
 
+#define PANEL_WIDTH 18
+#define PANEL_HEIGHT 18
+
 /**
  * @brief  Simulator main class
  */

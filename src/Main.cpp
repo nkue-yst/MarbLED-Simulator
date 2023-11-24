@@ -27,11 +27,19 @@ int main(int argc, char** argv)
         {
             if (i + 1 < argc)
             {
-                simulator->setLedWidth(std::stoi(argv[++i]));
+                if (std::stoi(argv[i + 1]) % PANEL_WIDTH != 0)
+                {
+                    std::cout << "Error: -W option requires a multiple of " << PANEL_WIDTH << "." << std::endl;
+                    continue;
+                }
+                else
+                {
+                    simulator->setLedWidth(std::stoi(argv[++i]));
+                }
             }
             else
             {
-                std::cout << "Error: -w option requires one argument." << std::endl;
+                std::cout << "Error: -W option requires one argument." << std::endl;
                 continue;
             }
         }
@@ -39,11 +47,19 @@ int main(int argc, char** argv)
         {
             if (i + 1 < argc)
             {
-                simulator->setLedHeight(std::stoi(argv[++i]));
+                if (std::stoi(argv[i + 1]) % PANEL_HEIGHT != 0)
+                {
+                    std::cout << "Error: -H option requires a multiple of " << PANEL_HEIGHT << "." << std::endl;
+                    continue;
+                }
+                else
+                {
+                    simulator->setLedHeight(std::stoi(argv[++i]));
+                }
             }
             else
             {
-                std::cout << "Error: -h option requires one argument." << std::endl;
+                std::cout << "Error: -H option requires one argument." << std::endl;
                 continue;
             }
         }
