@@ -27,9 +27,6 @@
 
 #define DEBUG std::cout<<"DEBUG: "<<__FILE__<<":"<<__LINE__<<std::endl
 
-#define BOARD_WIDTH  18
-#define BOARD_HEIGHT 18
-
 #define SETTING_PANEL_WIDTH  250
 
 #define MINIMUM_SIM_WIDTH 300
@@ -410,6 +407,7 @@ void Renderer::update()
 SDL_Texture* Renderer::convertCV_matToSDL_Texture(cv::Mat& mat)
 {
     // Create a new surface from the cv::Mat
+    // Reverse the order of the masks for BGR to RGB conversion
     SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(
         (void*)mat.data,
         mat.cols,
